@@ -10,7 +10,8 @@ import { Cargando } from "./ui";
 // Cada pantalla se descarga solo cuando se entra en ella. Las clientas, que son
 // la mayoría, nunca llegan a bajar el panel de la entrenadora; y la primera
 // carga deja de arrastrar las seis pantallas de golpe.
-const RegistroClientes = lazy(() => import("./RegistroClientes"));
+const CrearCliente = lazy(() => import("./CrearCliente"));
+const Clientas = lazy(() => import("./Clientas"));
 const AdminEjercicios = lazy(() => import("./AdminEjercicios"));
 const CreadorRutinas = lazy(() => import("./CreadorRutinas"));
 const VistaCliente = lazy(() => import("./VistaCliente"));
@@ -21,7 +22,8 @@ const MiProgreso = lazy(() => import("./MiProgreso"));
 // Cada pestaña es ahora una URL propia. Antes vivían en useState, así que el
 // botón "atrás" del móvil cerraba la app en vez de volver a la pestaña previa.
 const TABS_ENTRENADORA = [
-    { to: "/clientes", label: "Clientes" },
+    { to: "/clientas", label: "Clientas" },
+    { to: "/crear-cliente", label: "Crear Cliente" },
     { to: "/biblioteca", label: "Biblioteca" },
     { to: "/rutinas", label: "Rutinas" },
     { to: "/monitor", label: "Monitor" },
@@ -108,12 +110,13 @@ function App() {
                 <main>
                     <Suspense fallback={<Cargando />}>
                         <Routes>
-                            <Route path="/clientes" element={<RegistroClientes />} />
+                            <Route path="/clientas" element={<Clientas />} />
+                            <Route path="/crear-cliente" element={<CrearCliente />} />
                             <Route path="/biblioteca" element={<AdminEjercicios />} />
                             <Route path="/rutinas" element={<CreadorRutinas />} />
                             <Route path="/monitor" element={<Seguimiento />} />
                             {/* Cualquier otra URL (incluida "/") cae en la primera pestaña. */}
-                            <Route path="*" element={<Navigate to="/clientes" replace />} />
+                            <Route path="*" element={<Navigate to="/clientas" replace />} />
                         </Routes>
                     </Suspense>
                 </main>
