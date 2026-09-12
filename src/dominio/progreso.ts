@@ -2,32 +2,41 @@ import type { RegistroConPesos, RegistroDePeso } from "./tipos";
 import { aDate } from "./fechas";
 
 /**
- * Aplana los registros de entrenamiento en una lista de pesos por ejercicio,
- * ordenada por fecha. Un mismo ejercicio puede aparecer en varios bloques
- * distintos entre semanas (la clave `bloque-ejercicio` no es estable), así que
- * se agrupa por el nombre desnormalizado, no por la clave de la sesión.
+ * Etiqueta de un bloque para el gráfico de progreso. El título del bloque
+ * ("SET #1") se repite entre días de rutina distintos, así que solo por sí
+ * mismo mezclaría el peso de glúteos con el de espalda: se antepone el
+ * nombre del día (ciclo) o de la rutina (esporádica) para distinguirlos.
+ */
+function etiquetaDeBloque(registro: RegistroConPesos, index: number): string {
+    const titulo = registro.titulos?.[index] || `Set ${index + 1}`;
+    const contexto = registro.nombreDia || registro.rutinaNombre;
+    return contexto ? `${contexto} · ${titulo}` : titulo;
+}
+
+/**
+ * Aplana los registros de entrenamiento en una lista de pesos por bloque,
+ * ordenada por fecha y agrupada por su etiqueta (día + set).
  */
 export function pesosPorEjercicio(registros: RegistroConPesos[]): Record<string, RegistroDePeso[]> {
-    const porEjercicio: Record<string, RegistroDePeso[]> = {};
+    const porEtiqueta: Record<string, RegistroDePeso[]> = {};
 
     for (const registro of registros) {
         const pesos = registro.pesos ?? {};
-        const nombres = registro.nombresEjercicios ?? {};
         for (const [clave, peso] of Object.entries(pesos)) {
-            const nombre = nombres[clave];
-            if (!nombre || !Number.isFinite(peso)) continue;
-            (porEjercicio[nombre] ??= []).push({ ejercicio: nombre, peso, fecha: registro.fecha });
+            if (!Number.isFinite(peso)) continue;
+            const etiqueta = etiquetaDeBloque(registro, Number(clave));
+            (porEtiqueta[etiqueta] ??= []).push({ etiqueta, peso, fecha: registro.fecha });
         }
     }
 
-    for (const serie of Object.values(porEjercicio)) {
+    for (const serie of Object.values(porEtiqueta)) {
         serie.sort((a, b) => (aDate(a.fecha)?.getTime() ?? 0) - (aDate(b.fecha)?.getTime() ?? 0));
     }
 
-    return porEjercicio;
+    return porEtiqueta;
 }
 
-/** Nombres de ejercicio con progreso registrado, alfabéticos. */
+/** Etiquetas con progreso registrado, alfabéticas. */
 export function ejerciciosConProgreso(registros: RegistroConPesos[]): string[] {
     return Object.keys(pesosPorEjercicio(registros)).sort((a, b) => a.localeCompare(b));
 }

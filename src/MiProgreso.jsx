@@ -6,8 +6,8 @@ import { Cargando, Vacio, TituloSeccion } from "./ui";
 import { pesosPorEjercicio, ejerciciosConProgreso } from "./dominio/progreso";
 
 /**
- * Progreso de peso por ejercicio, para que la clienta vea cómo va subiendo
- * sin tener que hojear entrenamiento por entrenamiento. Sirve igual para
+ * Progreso de peso por set, para que la clienta vea cómo va subiendo sin
+ * tener que hojear entrenamiento por entrenamiento. Sirve igual para
  * clientas de ciclo y esporádicas: se agrupa por fecha del registro, no por
  * semana/día, que las esporádicas no tienen.
  */
@@ -42,17 +42,17 @@ export default function MiProgreso() {
 
     return (
         <div className="text-amatista-dark pb-24 animate-in fade-in duration-500">
-            <TituloSeccion titulo="Mi Progreso" subtitulo="Peso registrado por ejercicio" />
+            <TituloSeccion titulo="Mi Progreso" subtitulo="Peso registrado por set" />
 
             {ejercicios.length === 0 ? (
                 <Vacio>
                     Todavía no has anotado ningún peso. <br />
-                    Regístralo al terminar un ejercicio y aquí verás tu avance.
+                    Regístralo al terminar un set y aquí verás tu avance.
                 </Vacio>
             ) : (
                 <div className="grid gap-4">
                     {ejercicios.map(nombre => (
-                        <GraficoProgreso key={nombre} ejercicio={nombre} puntos={porEjercicio[nombre]} />
+                        <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicio[nombre]} />
                     ))}
                 </div>
             )}

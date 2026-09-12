@@ -12,7 +12,7 @@ const RELLENO = 24;
  * caen en intervalos regulares, y espaciarlos por fecha aplastaría los puntos
  * de una racha de días seguidos contra el borde izquierdo.
  */
-export default function GraficoProgreso({ ejercicio, puntos }) {
+export default function GraficoProgreso({ titulo, puntos }) {
     if (puntos.length === 0) return null;
 
     const pesos = puntos.map(p => p.peso);
@@ -40,7 +40,7 @@ export default function GraficoProgreso({ ejercicio, puntos }) {
     return (
         <div className="bg-amatista-dark rounded-[2rem] border border-white/10 shadow-xl p-5">
             <div className="flex justify-between items-baseline mb-2">
-                <p className="text-white font-black uppercase text-xs tracking-tight truncate pr-2">{ejercicio}</p>
+                <p className="text-white font-black uppercase text-xs tracking-tight truncate pr-2">{titulo}</p>
                 <p className="text-amatista-light font-black text-sm shrink-0">{ultimo.peso}kg</p>
             </div>
 

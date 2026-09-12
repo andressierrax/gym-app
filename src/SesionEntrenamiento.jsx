@@ -113,15 +113,18 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
         guardarEnMovil(checks, siguiente, pesos);
     };
 
-    // Clave `bloque-ejercicio`, igual que `gifAmpliado`: un peso es por
-    // ejercicio, no por bloque, porque un bloque puede ser una superserie.
-    const cambiarPeso = (clave, valor) => {
+    // Un peso por bloque, no por ejercicio: la mayoría de sets se escriben
+    // como texto libre con varios ejercicios adentro (ver CreadorRutinas), así
+    // que pedir un número por ejercicio de biblioteca dejaba el campo
+    // invisible casi siempre. Un solo número por set es lo que la entrenadora
+    // y la clienta ya esperan, porque es como funciona la bitácora de texto.
+    const cambiarPeso = (index, valor) => {
         const siguiente = { ...pesos };
         if (valor === "") {
-            delete siguiente[clave];
+            delete siguiente[index];
         } else {
             const numero = Number(valor);
-            if (Number.isFinite(numero)) siguiente[clave] = numero;
+            if (Number.isFinite(numero)) siguiente[index] = numero;
         }
         setPesos(siguiente);
         guardarEnMovil(checks, notas, siguiente);
@@ -129,22 +132,11 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
 
     const finalizar = async () => {
         await guardarSesion(checks, notas, pesos); // que lo último escrito llegue
-
-        // Nombres desnormalizados en el momento de cerrar: si la entrenadora
-        // cambia la rutina después, el histórico de progreso no se ve afectado.
-        const nombresEjercicios = {};
-        bloques.forEach((bloque, i) => {
-            (bloque.ejercicios ?? []).forEach((ej, j) => {
-                nombresEjercicios[`${i}-${j}`] = ej.nombre;
-            });
-        });
-
         onFinalizar?.({
             completados: completadosCount,
             totalBloques,
             notas,
             pesos,
-            nombresEjercicios,
             titulos: bloques.map(b => b.titulo ?? ""),
         });
     };
@@ -209,34 +201,13 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                                                                 )}
                                                             </button>
                                                         )}
-                                                        <div className="min-w-0 flex-1">
+                                                        <div className="min-w-0">
                                                             <p className="text-white font-black uppercase text-xs tracking-tight leading-tight">
                                                                 {ej.nombre}
                                                             </p>
                                                             <p className="text-amatista-light text-[11px] font-bold mt-0.5">
                                                                 {formatearPrescripcion(ej)}
                                                             </p>
-                                                        </div>
-                                                        <div className="shrink-0 text-right">
-                                                            {pesosSemanaAnterior[clave] != null && (
-                                                                <p className="text-amatista-light/60 text-[9px] font-bold mb-0.5 whitespace-nowrap">
-                                                                    Antes: {pesosSemanaAnterior[clave]}kg
-                                                                </p>
-                                                            )}
-                                                            <label className="flex items-center gap-1 bg-black/30 rounded-xl px-2 py-1">
-                                                                <input
-                                                                    type="number"
-                                                                    inputMode="decimal"
-                                                                    step="0.5"
-                                                                    min="0"
-                                                                    placeholder="kg"
-                                                                    value={pesos[clave] ?? ""}
-                                                                    onChange={(e) => cambiarPeso(clave, e.target.value)}
-                                                                    onBlur={() => guardarSesion(checks, notas, pesos)}
-                                                                    className="w-12 bg-transparent text-white text-sm font-bold text-right outline-none placeholder-white/20"
-                                                                />
-                                                                <span className="text-white/40 text-[9px] font-black uppercase">kg</span>
-                                                            </label>
                                                         </div>
                                                     </div>
                                                     {ampliado && ej.gifUrl && (esVideo(ej) ? (
@@ -270,15 +241,41 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                                     </div>
                                 )}
 
+                                {/* Un solo bloque con el peso del set y la bitácora de
+                                    texto: todo el registro de este set vive junto,
+                                    en vez de repartido entre varios sitios. */}
                                 <div className="bg-black/20 p-4 rounded-3xl border border-white/5 mb-5">
-                                    <p className="text-[9px] font-black text-white/40 uppercase mb-2 tracking-widest">Bitácora de Cargas</p>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Peso de hoy</p>
+                                        {pesosSemanaAnterior[index] != null && (
+                                            <p className="text-amatista-light/60 text-[9px] font-bold whitespace-nowrap">
+                                                Semana pasada: {pesosSemanaAnterior[index]}kg
+                                            </p>
+                                        )}
+                                    </div>
+                                    <label className="flex items-baseline gap-2 mb-4">
+                                        <input
+                                            type="number"
+                                            inputMode="decimal"
+                                            step="0.5"
+                                            min="0"
+                                            placeholder="0"
+                                            value={pesos[index] ?? ""}
+                                            onChange={(e) => cambiarPeso(index, e.target.value)}
+                                            onBlur={() => guardarSesion(checks, notas, pesos)}
+                                            className="w-24 bg-white/10 rounded-xl px-3 py-2 text-white text-2xl font-black outline-none placeholder-white/20 border border-white/10"
+                                        />
+                                        <span className="text-white/50 text-xs font-black uppercase">kg</span>
+                                    </label>
+
+                                    <p className="text-[9px] font-black text-white/40 uppercase mb-2 tracking-widest">Notas</p>
                                     {notasSemanaAnterior[index]?.trim() && (
                                         <p className="text-amatista-light/70 text-[11px] font-bold mb-2">
                                             Semana pasada: {notasSemanaAnterior[index]}
                                         </p>
                                     )}
                                     <textarea
-                                        placeholder="Anota tus pesos aquí..."
+                                        placeholder="Series, reps, cómo te sentiste..."
                                         className="w-full bg-transparent border-none text-white text-sm focus:ring-0 p-0 resize-none placeholder-white/20"
                                         rows="2"
                                         value={notas[index] ?? ""}

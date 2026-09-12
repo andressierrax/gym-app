@@ -63,7 +63,7 @@ export interface Plan {
 export interface Sesion {
     checks: Record<string, boolean>;
     notas: Record<string, string>;
-    /** Peso levantado (kg), indexado por `${bloqueIndex}-${ejercicioIndex}`. */
+    /** Peso levantado (kg) en el bloque, indexado igual que `checks` y `notas`. */
     pesos: Record<string, number>;
     /** Epoch en milisegundos del último cambio hecho por la clienta. */
     actualizado: number;
@@ -77,18 +77,28 @@ export interface SesionServidor {
     actualizadoCliente?: number;
 }
 
-/** Un peso registrado en un entrenamiento, ya con su ejercicio y fecha. */
+/** Un peso registrado en un entrenamiento, ya con su etiqueta y fecha. */
 export interface RegistroDePeso {
-    ejercicio: string;
+    etiqueta: string;
     peso: number;
     fecha: FechaFirestore;
 }
 
-/** Lo mínimo de `registros_entrenamiento` que necesita el gráfico de progreso. */
+/**
+ * Lo mínimo de `registros_entrenamiento` que necesita el gráfico de progreso.
+ *
+ * `titulos` es el nombre de cada bloque tal y como lo escribió la
+ * entrenadora ("SET #1"...). Como se repite entre días distintos, no basta
+ * por sí solo para agrupar: `nombreDia` (ciclo) o `rutinaNombre`
+ * (esporádica) es lo que distingue "SET #1 de Glúteos" de "SET #1 de
+ * Espalda".
+ */
 export interface RegistroConPesos {
     fecha: FechaFirestore;
     pesos?: Record<string, number>;
-    nombresEjercicios?: Record<string, string>;
+    titulos?: string[];
+    nombreDia?: string;
+    rutinaNombre?: string;
 }
 
 export interface Cliente {

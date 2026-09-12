@@ -175,7 +175,7 @@ export default function Seguimiento() {
                         </p>
                         <div className="grid gap-3">
                             {ejercicios.map(nombre => (
-                                <GraficoProgreso key={nombre} ejercicio={nombre} puntos={porEjercicio[nombre]} />
+                                <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicio[nombre]} />
                             ))}
                         </div>
                     </div>
