@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "planes_mensuales",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clienteId", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "_comentario": "Colección de una etapa anterior de la app. Ya no la consulta ningún código, pero se declara para que desplegar este fichero no proponga borrarla.",
+      "collectionGroup": "rutinas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clienteId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Los cuatro pasos van por separado para que el resumen diga cuál falló,
+      # y con `if: always()` se ejecutan todos aunque uno caiga: así un error de
+      # tipos no oculta un test roto.
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        if: always()
+        run: npm run typecheck
+
+      - name: Tests
+        if: always()
+        run: npm run test
+
+      - name: Build
+        if: always()
+        run: npm run build

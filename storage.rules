@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Antes leía el rol desde Firestore (firestore.get), pero esa lectura es
+    // entre servicios (Storage → Firestore) y Google la exige con el plan de
+    // pago Blaze: en Spark, sin facturación activada, siempre fallaba en
+    // silencio y por eso ninguna subida funcionaba nunca, con o sin permiso
+    // real. El custom claim vive en el propio token de Auth, sin ese límite.
+    // Requiere que la cuenta tenga el claim puesto (una vez, al crearla) y
+    // que ese token se haya emitido después — cerrar sesión y volver a
+    // entrar si el rol cambió con la sesión ya abierta.
+    function esEntrenadora() {
+      return request.auth != null && request.auth.token.role == 'trainer';
+    }
+
+    // GIFs (o vídeos cortos en bucle, mismo uso) demostrativos de la
+    // biblioteca de ejercicios. Los ven todas las autenticadas; solo la
+    // entrenadora sube y borra. Se acepta vídeo porque las apps que
+    // convierten un GIF de Giphy suelen entregar el resultado en .mp4, no
+    // en .gif — antes eso rompía el ejercicio en silencio.
+    match /ejercicios/{archivo} {
+      allow read: if request.auth != null;
+      allow write: if esEntrenadora()
+        && request.resource.size < 20 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('video/.*'));
+      allow delete: if esEntrenadora();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

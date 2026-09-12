@@ -1,0 +1,57 @@
+@import "tailwindcss";
+/* Provee animate-in / fade-in / slide-in-from-*. Sucesor de tailwindcss-animate
+   para Tailwind v4 (aquel es un plugin JS de v3 y no compone bien con duration-*). */
+@import "tw-animate-css";
+
+/* Paleta Trinity Fit. En Tailwind v4 los colores del tema se definen aquí
+   (ya no en tailwind.config.js) y generan las clases bg-/text-/border-amatista-*. */
+@theme {
+    --color-amatista: #9F7AEA;
+    --color-amatista-light: #D6BCFA;
+    --color-amatista-dark: #6B46C1;
+}
+
+@layer base {
+
+    /* Configuración para móviles y estética Trinity */
+    html {
+        -webkit-tap-highlight-color: transparent;
+        background-color: #f3e8ff;
+        /* Un fondo púrpura muy claro para la app */
+    }
+
+    body {
+        overscroll-behavior-y: contain;
+        background-color: #f3e8ff;
+        color: var(--color-amatista-dark);
+    }
+
+    /* Evita que un doble tap seleccione el texto de botones y pestañas,
+       pero deja copiable el contenido de la rutina. */
+    button,
+    label {
+        user-select: none;
+    }
+
+    /* Respeta a quien haya pedido menos movimiento en su sistema. */
+    @media (prefers-reduced-motion: reduce) {
+
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/* Oculta la barra de scroll del carrusel de semanas sin perder el desplazamiento. */
+@utility no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}

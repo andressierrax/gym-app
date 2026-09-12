@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Vite se encarga de compilar; TypeScript aquí solo comprueba tipos. */
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+
+    /* Las pantallas siguen en .jsx. `allowJs` deja que convivan con el
+       dominio ya tipado; migrarlas a .tsx se puede hacer una a una, y
+       activar `checkJs` cuando estén todas. */
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src"]
+}

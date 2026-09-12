@@ -1,0 +1,111 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticada() {
+      return request.auth != null;
+    }
+
+    // El rol vive en users/{uid}.role. Esto cuesta una lectura por evaluación;
+    // si el volumen crece, migrar a custom claims (auth.token.role == 'trainer').
+    function esEntrenadora() {
+      return autenticada()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer';
+    }
+
+    function esDuena(uid) {
+      return autenticada() && request.auth.uid == uid;
+    }
+
+    // --- PERFILES ---
+    // Cada usuaria lee solo su perfil. La entrenadora lee y crea todos
+    // (RegistroClientes escribe aquí con la sesión de la entrenadora).
+    match /users/{uid} {
+      allow read: if esDuena(uid) || esEntrenadora();
+      allow create, update: if esEntrenadora();
+      allow delete: if false;
+    }
+
+    // --- BIBLIOTECA DE EJERCICIOS ---
+    // Todas las autenticadas la consultan; solo la entrenadora la modifica.
+    match /exercises/{ejercicioId} {
+      allow read: if autenticada();
+      allow write: if esEntrenadora();
+    }
+
+    // --- PLANES ASIGNADOS ---
+    // Una clienta solo puede leer los planes cuyo clienteId es el suyo.
+    // Esto obliga a que su query lleve where("clienteId","==",uid).
+    match /planes_mensuales/{planId} {
+      allow read: if esEntrenadora() || resource.data.clienteId == request.auth.uid;
+      allow write: if esEntrenadora();
+    }
+
+    // --- CATÁLOGO DE RUTINAS (clientas esporádicas) ---
+    // Rutinas con nombre y sin calendario: la clienta elige cuál hace el día
+    // que aparece. Mismo criterio de lectura que los planes del ciclo.
+    match /rutinas_libres/{rutinaId} {
+      allow read: if esEntrenadora() || resource.data.clienteId == request.auth.uid;
+      allow write: if esEntrenadora();
+    }
+
+    // --- CICLO MENSTRUAL ---
+    // Vive en su propia colección y NO en `users` a propósito: la clienta tiene
+    // que poder escribir su fecha, y darle permiso de escritura sobre su perfil
+    // le permitiría cambiarse el `role` a 'trainer'. Aquí no hay nada que
+    // escalar. El interruptor que activa la función sí está en `users`, porque
+    // esa decisión es de la entrenadora.
+    match /ciclos/{uid} {
+      allow read: if esDuena(uid) || esEntrenadora();
+      allow create, update: if esDuena(uid)
+        && request.resource.data.ultimaRegla is string
+        && request.resource.data.duracion is int
+        && request.resource.data.duracion >= 21
+        && request.resource.data.duracion <= 40;
+      allow delete: if esDuena(uid) || esEntrenadora();
+    }
+
+    // --- SESIÓN EN CURSO (checks y bitácora de cargas) ---
+    // Borrador vivo del día: la clienta lo escribe mientras entrena.
+    // El id es {uid}_S{semana}D{dia}, así que exigimos que el clienteId coincida
+    // con quien escribe para que nadie edite la sesión de otra.
+    //
+    // La lectura se decide por el id, no por resource.data: en la primera
+    // visita a un día el documento todavía no existe, y ahí `resource` es
+    // null, así que `resource.data.clienteId` lanza un error de evaluación
+    // en vez de simplemente denegar. Como el id ya lleva el uid al principio,
+    // no hace falta leer el documento para saber si es suyo.
+    match /sesiones/{sesionId} {
+      allow read: if esEntrenadora() || esDuena(sesionId.split('_')[0]);
+      // Sin semana/dia a propósito: SesionEntrenamiento.jsx nunca los manda
+      // (aquí no se leen en ningún sitio), y las esporádicas ni tienen ese
+      // concepto en su id. Pedirlos hacía que el primer guardado de CUALQUIER
+      // sesión, de cualquier clienta, fallara con permission-denied para
+      // siempre — el borrador nunca llegaba a crearse. El dueño ya lo protege
+      // esDuena(clienteId) al escribir y el propio id al leer.
+      allow create, update: if esDuena(request.resource.data.clienteId);
+      allow delete: if esDuena(resource.data.clienteId) || esEntrenadora();
+    }
+
+    // --- REGISTROS DE ENTRENAMIENTO ---
+    // La clienta solo puede crear registros a su propio nombre y no puede
+    // alterarlos después; la entrenadora los lee todos en el Monitor.
+    match /registros_entrenamiento/{registroId} {
+      allow create: if esDuena(request.resource.data.clienteId)
+        && request.resource.data.semana is int
+        && request.resource.data.dia is int
+        && request.resource.data.completados is int
+        && request.resource.data.totalBloques is int;
+      allow read: if esEntrenadora() || resource.data.clienteId == request.auth.uid;
+      allow update: if false;
+      allow delete: if esEntrenadora();
+    }
+
+    // Todo lo no declarado arriba queda denegado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

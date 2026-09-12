@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Material de trabajo pesado: no debe versionarse ni desplegarse.
+# Son ~20 MB de vídeos y PDFs que no forman parte de la app.
+videos/
+rutinas/
+imagenes/
+
+# Estado exportado del Firebase Emulator Suite (--export-on-exit). Son datos
+# de prueba locales, se regeneran con "npm run sembrar".
+.emulador-datos/
+firebase-export-*/
+pasoapaso/
+backups/
+
+# Caché local del CLI de Firebase y configuración local de Claude Code: no
+# son parte de la app ni deben compartirse entre máquinas.
+.firebase/
+.claude/
