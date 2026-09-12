@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "./firebase";
 import { collection, query, where, onSnapshot, orderBy, limit, getDocs, doc, writeBatch } from "firebase/firestore";
-import { TituloSeccion, Cargando, Seleccion } from "./ui";
+import { TituloSeccion, Cargando } from "./ui";
 import { etiquetaFecha, aDate } from "./dominio/fechas";
 import { estadoDelCiclo } from "./dominio/ciclo";
 import { etiquetasDeRegistro } from "./dominio/registros";
@@ -130,7 +130,9 @@ export default function Seguimiento() {
 
     // La lista de clientas sale de los propios registros: no hace falta
     // consultar `users` solo para poder filtrar.
-    const clientas = [...new Set(registros.map(r => r.clienteNombre).filter(Boolean))].sort();
+    const clientas = [...new Set(registros.map(r => r.clienteNombre).filter(Boolean))]
+        .sort()
+        .map(nombre => ({ nombre, cantidad: registros.filter(r => r.clienteNombre === nombre).length }));
     const visibles = filtro ? registros.filter(r => r.clienteNombre === filtro) : registros;
 
     if (loading) return <Cargando texto="Cargando Actividad..." />;
@@ -139,7 +141,7 @@ export default function Seguimiento() {
         <div className="animate-in fade-in duration-500 pb-20">
             <TituloSeccion
                 titulo="Monitor"
-                subtitulo="Actividad en Tiempo Real"
+                subtitulo={filtro || "Actividad en Tiempo Real"}
                 accion={registros.length > 0 && (
                     <button
                         onClick={vaciarHistorial}
@@ -151,44 +153,80 @@ export default function Seguimiento() {
                 )}
             />
 
-            {clientas.length > 1 && (
-                <div className="mb-6">
-                    <Seleccion
-                        value={filtro}
-                        onChange={(e) => setFiltro(e.target.value)}
-                        className="text-xs border border-amatista-light/30 shadow-sm"
-                    >
-                        <option value="">Todas las clientas ({registros.length})</option>
-                        {clientas.map(n => <option key={n} value={n}>{n}</option>)}
-                    </Seleccion>
-                </div>
-            )}
-
-            {filtro && (() => {
-                const porEjercicio = pesosPorEjercicio(historialClienta);
-                const ejercicios = ejerciciosConProgreso(historialClienta);
-                if (ejercicios.length === 0) return null;
-                return (
-                    <div className="mb-8">
-                        <p className="text-amatista-dark/50 text-[10px] font-black uppercase tracking-widest mb-3">
-                            Progreso de {filtro}
+            {/* Primero se elige la clienta como tarjeta, y solo al entrar a una
+                se ve su progreso de peso y su actividad: antes todo se mostraba
+                junto en un desplegable, que la entrenadora encontró disperso. */}
+            {!filtro ? (
+                clientas.length === 0 ? (
+                    <div className="bg-white/50 border-2 border-dashed border-amatista-light rounded-[2rem] p-10 text-center">
+                        <p className="text-amatista-dark/40 font-bold italic text-sm">
+                            No hay entrenamientos registrados todavía.
                         </p>
-                        <div className="grid gap-3">
-                            {ejercicios.map(nombre => (
-                                <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicio[nombre]} />
-                            ))}
-                        </div>
                     </div>
-                );
-            })()}
-
-            {visibles.length === 0 ? (
-                <div className="bg-white/50 border-2 border-dashed border-amatista-light rounded-[2rem] p-10 text-center">
-                    <p className="text-amatista-dark/40 font-bold italic text-sm">
-                        {filtro ? `${filtro} no tiene entrenamientos registrados.` : "No hay entrenamientos registrados todavía."}
-                    </p>
-                </div>
+                ) : (
+                    <div className="grid gap-3">
+                        {clientas.map(c => (
+                            <button
+                                key={c.nombre}
+                                onClick={() => setFiltro(c.nombre)}
+                                className="w-full text-left bg-white p-5 rounded-[2rem] border border-amatista-light/20 shadow-sm active:scale-[0.98] transition-all flex items-center justify-between"
+                            >
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className="h-12 w-12 shrink-0 bg-amatista-dark rounded-2xl flex items-center justify-center text-white font-black italic text-xl shadow-lg shadow-amatista-dark/20">
+                                        {c.nombre.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="font-black text-amatista-dark uppercase text-sm leading-tight tracking-tight truncate">
+                                            {c.nombre}
+                                        </h3>
+                                        <p className="text-amatista-dark/40 text-[9px] font-bold uppercase tracking-widest">
+                                            {c.cantidad} entrenamiento{c.cantidad === 1 ? "" : "s"}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="text-amatista-dark/30 text-2xl shrink-0">›</span>
+                            </button>
+                        ))}
+                    </div>
+                )
             ) : (
+                <>
+                    <button
+                        onClick={() => setFiltro("")}
+                        className="mb-6 text-[10px] font-black uppercase tracking-widest text-amatista-dark/60 bg-white/60 px-4 py-2 rounded-2xl border border-amatista-light/30 active:scale-95 transition-all"
+                    >
+                        ← Todas las clientas
+                    </button>
+
+                    {(() => {
+                        const porEjercicio = pesosPorEjercicio(historialClienta);
+                        const ejercicios = ejerciciosConProgreso(historialClienta);
+                        if (ejercicios.length === 0) return null;
+                        return (
+                            <div className="mb-8">
+                                <p className="text-amatista-dark/50 text-[10px] font-black uppercase tracking-widest mb-3">
+                                    Progreso de peso
+                                </p>
+                                <div className="grid gap-3">
+                                    {ejercicios.map(nombre => (
+                                        <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicio[nombre]} />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    <p className="text-amatista-dark/50 text-[10px] font-black uppercase tracking-widest mb-3">
+                        Actividad
+                    </p>
+
+                    {visibles.length === 0 ? (
+                        <div className="bg-white/50 border-2 border-dashed border-amatista-light rounded-[2rem] p-10 text-center">
+                            <p className="text-amatista-dark/40 font-bold italic text-sm">
+                                {filtro} no tiene entrenamientos registrados.
+                            </p>
+                        </div>
+                    ) : (
                 <div className="grid gap-3">
                     {visibles.map((reg) => {
                         // Notas que la clienta escribió en su bitácora, ordenadas
@@ -297,6 +335,8 @@ export default function Seguimiento() {
                         );
                     })}
                 </div>
+                    )}
+                </>
             )}
         </div>
     );
