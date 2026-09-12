@@ -2,15 +2,19 @@ import type { RegistroConPesos, RegistroDePeso } from "./tipos";
 import { aDate } from "./fechas";
 
 /**
- * Etiqueta de un bloque para el gráfico de progreso. El título del bloque
- * ("SET #1") se repite entre días de rutina distintos, así que solo por sí
- * mismo mezclaría el peso de glúteos con el de espalda: se antepone el
- * nombre del día (ciclo) o de la rutina (esporádica) para distinguirlos.
+ * Etiqueta de una clave de `pesos` para el gráfico de progreso. Esa etiqueta
+ * ("Sentadilla", o el título del set si no había numerales) se repite entre
+ * días de rutina distintos, así que sola mezclaría el peso de glúteos con el
+ * de espalda: se antepone el nombre del día (ciclo) o de la rutina
+ * (esporádica) para distinguirlos.
  */
-function etiquetaDeBloque(registro: RegistroConPesos, index: number): string {
-    const titulo = registro.titulos?.[index] || `Set ${index + 1}`;
+function etiquetaDeBloque(registro: RegistroConPesos, clave: string): string {
+    const indiceBloque = Number(clave.split("-")[0]);
+    const etiqueta = registro.etiquetasPeso?.[clave]
+        || registro.titulos?.[indiceBloque]
+        || `Set ${indiceBloque + 1}`;
     const contexto = registro.nombreDia || registro.rutinaNombre;
-    return contexto ? `${contexto} · ${titulo}` : titulo;
+    return contexto ? `${contexto} · ${etiqueta}` : etiqueta;
 }
 
 /**
@@ -24,7 +28,7 @@ export function pesosPorEjercicio(registros: RegistroConPesos[]): Record<string,
         const pesos = registro.pesos ?? {};
         for (const [clave, peso] of Object.entries(pesos)) {
             if (!Number.isFinite(peso)) continue;
-            const etiqueta = etiquetaDeBloque(registro, Number(clave));
+            const etiqueta = etiquetaDeBloque(registro, clave);
             (porEtiqueta[etiqueta] ??= []).push({ etiqueta, peso, fecha: registro.fecha });
         }
     }

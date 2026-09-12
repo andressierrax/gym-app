@@ -47,7 +47,7 @@ export default function VistaClienteLibre() {
         return () => { vivo = false; };
     }, [leerRutinas]);
 
-    const finalizar = async ({ completados, totalBloques, notas, pesos, titulos }) => {
+    const finalizar = async ({ completados, totalBloques, notas, pesos, etiquetasPeso, titulos }) => {
         try {
             // `displayName` está vacío en estas cuentas: el nombre real vive en
             // el perfil, y sin esto el Monitor mostraría el correo.
@@ -66,6 +66,7 @@ export default function VistaClienteLibre() {
                 totalBloques,
                 notas,
                 pesos,
+                etiquetasPeso,
                 titulos,
                 fecha: new Date(),
             });

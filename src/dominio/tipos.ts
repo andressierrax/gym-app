@@ -87,15 +87,18 @@ export interface RegistroDePeso {
 /**
  * Lo mínimo de `registros_entrenamiento` que necesita el gráfico de progreso.
  *
- * `titulos` es el nombre de cada bloque tal y como lo escribió la
- * entrenadora ("SET #1"...). Como se repite entre días distintos, no basta
- * por sí solo para agrupar: `nombreDia` (ciclo) o `rutinaNombre`
- * (esporádica) es lo que distingue "SET #1 de Glúteos" de "SET #1 de
- * Espalda".
+ * `etiquetasPeso` nombra cada clave de `pesos`: el ejercicio detectado
+ * ("Banca declinada con barra") si el set tenía numerales, o el título del
+ * set si no. Como esas etiquetas se repiten entre días distintos, no bastan
+ * por sí solas para agrupar: `nombreDia` (ciclo) o `rutinaNombre`
+ * (esporádica) es lo que distingue "Sentadilla de Glúteos" de "Sentadilla de
+ * Pierna". `titulos` es el respaldo para registros guardados antes de que
+ * existiera `etiquetasPeso`.
  */
 export interface RegistroConPesos {
     fecha: FechaFirestore;
     pesos?: Record<string, number>;
+    etiquetasPeso?: Record<string, string>;
     titulos?: string[];
     nombreDia?: string;
     rutinaNombre?: string;

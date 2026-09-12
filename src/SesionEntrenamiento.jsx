@@ -5,6 +5,7 @@ import Timer from "./Timer";
 import { leerLocal, guardarLocal, servidorEsMasReciente, contarCompletados } from "./dominio/sesion";
 import { formatearPrescripcion } from "./dominio/planes";
 import { esVideo } from "./dominio/ejercicios";
+import { dividirBloque, etiquetaDePunto } from "./dominio/bloques";
 
 // Reemplaza la imagen o el vídeo roto por un aviso, en vez de dejar el hueco
 // del icono roto del navegador. Vive fuera del componente porque no depende
@@ -113,18 +114,16 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
         guardarEnMovil(checks, siguiente, pesos);
     };
 
-    // Un peso por bloque, no por ejercicio: la mayoría de sets se escriben
-    // como texto libre con varios ejercicios adentro (ver CreadorRutinas), así
-    // que pedir un número por ejercicio de biblioteca dejaba el campo
-    // invisible casi siempre. Un solo número por set es lo que la entrenadora
-    // y la clienta ya esperan, porque es como funciona la bitácora de texto.
-    const cambiarPeso = (index, valor) => {
+    // Clave `bloqueIndex` a secas cuando el set no tiene numerales detectados
+    // (un solo peso para todo el set), o `bloqueIndex-puntoIndex` cuando sí
+    // los tiene: un peso por cada "1.", "2."... que escribió la entrenadora.
+    const cambiarPeso = (clave, valor) => {
         const siguiente = { ...pesos };
         if (valor === "") {
-            delete siguiente[index];
+            delete siguiente[clave];
         } else {
             const numero = Number(valor);
-            if (Number.isFinite(numero)) siguiente[index] = numero;
+            if (Number.isFinite(numero)) siguiente[clave] = numero;
         }
         setPesos(siguiente);
         guardarEnMovil(checks, notas, siguiente);
@@ -132,11 +131,25 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
 
     const finalizar = async () => {
         await guardarSesion(checks, notas, pesos); // que lo último escrito llegue
+
+        // Etiqueta de cada clave de `pesos`, para que el progreso pueda
+        // mostrar "Banca declinada con barra" en vez de solo "SET #1".
+        const etiquetasPeso = {};
+        bloques.forEach((bloque, i) => {
+            const { puntos } = dividirBloque(bloque.contenido);
+            if (puntos.length > 0) {
+                puntos.forEach((punto, j) => { etiquetasPeso[`${i}-${j}`] = etiquetaDePunto(punto); });
+            } else {
+                etiquetasPeso[`${i}`] = bloque.titulo || `Set ${i + 1}`;
+            }
+        });
+
         onFinalizar?.({
             completados: completadosCount,
             totalBloques,
             notas,
             pesos,
+            etiquetasPeso,
             titulos: bloques.map(b => b.titulo ?? ""),
         });
     };
@@ -235,39 +248,87 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                                     </div>
                                 )}
 
-                                {bloque.contenido && (
-                                    <div className="text-white/90 text-sm whitespace-pre-line mb-6 leading-relaxed font-medium">
-                                        {bloque.contenido}
-                                    </div>
-                                )}
+                                {/* La entrenadora escribe cada set como un párrafo con
+                                    "1. ...", "2. ..."; se detectan esos numerales para
+                                    dar un peso por ejercicio sin pedirle que cambie
+                                    cómo escribe las rutinas. Con menos de dos numerales
+                                    no hay nada que partir: un solo peso para todo el set. */}
+                                {(() => {
+                                    const { preambulo, puntos } = dividirBloque(bloque.contenido);
 
-                                {/* Un solo bloque con el peso del set y la bitácora de
-                                    texto: todo el registro de este set vive junto,
-                                    en vez de repartido entre varios sitios. */}
+                                    if (puntos.length === 0) return (
+                                        <>
+                                            {preambulo && (
+                                                <div className="text-white/90 text-sm whitespace-pre-line mb-4 leading-relaxed font-medium">
+                                                    {preambulo}
+                                                </div>
+                                            )}
+                                            <div className="bg-black/20 p-4 rounded-3xl border border-white/5 mb-3">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Peso de hoy</p>
+                                                    {pesosSemanaAnterior[index] != null && (
+                                                        <p className="text-amatista-light/60 text-[9px] font-bold whitespace-nowrap">
+                                                            Antes: {pesosSemanaAnterior[index]}kg
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <label className="flex items-baseline gap-2">
+                                                    <input
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        step="0.5"
+                                                        min="0"
+                                                        placeholder="0"
+                                                        value={pesos[index] ?? ""}
+                                                        onChange={(e) => cambiarPeso(String(index), e.target.value)}
+                                                        onBlur={() => guardarSesion(checks, notas, pesos)}
+                                                        className="w-24 bg-white/10 rounded-xl px-3 py-2 text-white text-2xl font-black outline-none placeholder-white/20 border border-white/10"
+                                                    />
+                                                    <span className="text-white/50 text-xs font-black uppercase">kg</span>
+                                                </label>
+                                            </div>
+                                        </>
+                                    );
+
+                                    return (
+                                        <div className="space-y-2 mb-3">
+                                            {preambulo && (
+                                                <p className="text-white/70 text-xs font-medium whitespace-pre-line">{preambulo}</p>
+                                            )}
+                                            {puntos.map((punto, j) => {
+                                                const clave = `${index}-${j}`;
+                                                return (
+                                                    <div key={j} className="bg-black/20 p-4 rounded-3xl border border-white/5">
+                                                        <p className="text-white/90 text-sm whitespace-pre-line leading-relaxed font-medium mb-3">
+                                                            {punto}
+                                                        </p>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <p className="text-amatista-light/60 text-[9px] font-bold whitespace-nowrap">
+                                                                {pesosSemanaAnterior[clave] != null ? `Antes: ${pesosSemanaAnterior[clave]}kg` : ""}
+                                                            </p>
+                                                            <label className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2.5 py-1.5 border border-white/10 shrink-0">
+                                                                <input
+                                                                    type="number"
+                                                                    inputMode="decimal"
+                                                                    step="0.5"
+                                                                    min="0"
+                                                                    placeholder="0"
+                                                                    value={pesos[clave] ?? ""}
+                                                                    onChange={(e) => cambiarPeso(clave, e.target.value)}
+                                                                    onBlur={() => guardarSesion(checks, notas, pesos)}
+                                                                    className="w-14 bg-transparent text-white text-lg font-black text-right outline-none placeholder-white/20"
+                                                                />
+                                                                <span className="text-white/50 text-[10px] font-black uppercase">kg</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
+
                                 <div className="bg-black/20 p-4 rounded-3xl border border-white/5 mb-5">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Peso de hoy</p>
-                                        {pesosSemanaAnterior[index] != null && (
-                                            <p className="text-amatista-light/60 text-[9px] font-bold whitespace-nowrap">
-                                                Semana pasada: {pesosSemanaAnterior[index]}kg
-                                            </p>
-                                        )}
-                                    </div>
-                                    <label className="flex items-baseline gap-2 mb-4">
-                                        <input
-                                            type="number"
-                                            inputMode="decimal"
-                                            step="0.5"
-                                            min="0"
-                                            placeholder="0"
-                                            value={pesos[index] ?? ""}
-                                            onChange={(e) => cambiarPeso(index, e.target.value)}
-                                            onBlur={() => guardarSesion(checks, notas, pesos)}
-                                            className="w-24 bg-white/10 rounded-xl px-3 py-2 text-white text-2xl font-black outline-none placeholder-white/20 border border-white/10"
-                                        />
-                                        <span className="text-white/50 text-xs font-black uppercase">kg</span>
-                                    </label>
-
                                     <p className="text-[9px] font-black text-white/40 uppercase mb-2 tracking-widest">Notas</p>
                                     {notasSemanaAnterior[index]?.trim() && (
                                         <p className="text-amatista-light/70 text-[11px] font-bold mb-2">
