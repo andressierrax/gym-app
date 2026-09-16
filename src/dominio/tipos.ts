@@ -65,6 +65,8 @@ export interface Sesion {
     notas: Record<string, string>;
     /** Peso levantado (kg) en el bloque, indexado igual que `checks` y `notas`. */
     pesos: Record<string, number>;
+    /** Repeticiones hechas en el bloque, indexado igual que `pesos`. */
+    reps: Record<string, number>;
     /** Epoch en milisegundos del último cambio hecho por la clienta. */
     actualizado: number;
 }
@@ -74,6 +76,7 @@ export interface SesionServidor {
     checks?: Record<string, boolean>;
     notas?: Record<string, string>;
     pesos?: Record<string, number>;
+    reps?: Record<string, number>;
     actualizadoCliente?: number;
 }
 
@@ -98,10 +101,19 @@ export interface RegistroDePeso {
 export interface RegistroConPesos {
     fecha: FechaFirestore;
     pesos?: Record<string, number>;
+    /** Repeticiones hechas, con las mismas claves que `pesos`. */
+    reps?: Record<string, number>;
     etiquetasPeso?: Record<string, string>;
     titulos?: string[];
     nombreDia?: string;
     rutinaNombre?: string;
+}
+
+/** Una repetición registrada en un entrenamiento, ya con su etiqueta y fecha. */
+export interface RegistroDeRep {
+    etiqueta: string;
+    reps: number;
+    fecha: FechaFirestore;
 }
 
 export interface Cliente {

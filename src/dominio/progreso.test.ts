@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { RegistroConPesos } from "./tipos";
-import { pesosPorEjercicio, ejerciciosConProgreso } from "./progreso";
+import { pesosPorEjercicio, ejerciciosConProgreso, repsPorEjercicio, ejerciciosConProgresoReps } from "./progreso";
 
 describe("pesosPorEjercicio", () => {
     it("agrupa por día + etiqueta, no solo por el nombre del ejercicio", () => {
@@ -78,5 +78,43 @@ describe("ejerciciosConProgreso", () => {
 
     it("es una lista vacía sin registros", () => {
         expect(ejerciciosConProgreso([])).toEqual([]);
+    });
+});
+
+describe("repsPorEjercicio", () => {
+    it("agrupa por día + etiqueta igual que los pesos", () => {
+        const registros: RegistroConPesos[] = [
+            { fecha: "2026-01-01", reps: { "0-0": 10 }, etiquetasPeso: { "0-0": "Sentadilla" }, nombreDia: "Glúteos" },
+            { fecha: "2026-01-08", reps: { "0-0": 12 }, etiquetasPeso: { "0-0": "Sentadilla" }, nombreDia: "Glúteos" },
+        ];
+        const resultado = repsPorEjercicio(registros);
+        expect(resultado["Glúteos · Sentadilla"]?.map(r => r.reps)).toEqual([10, 12]);
+    });
+
+    it("ignora repeticiones no numéricas", () => {
+        const registros: RegistroConPesos[] = [{ fecha: "2026-01-01", reps: { "0": NaN } }];
+        expect(repsPorEjercicio(registros)).toEqual({});
+    });
+
+    it("no revienta con registros sin reps", () => {
+        expect(repsPorEjercicio([{ fecha: "2026-01-01" }])).toEqual({});
+    });
+});
+
+describe("ejerciciosConProgresoReps", () => {
+    it("devuelve las etiquetas ordenadas alfabéticamente", () => {
+        const registros: RegistroConPesos[] = [
+            {
+                fecha: "2026-01-01",
+                reps: { "0-0": 10, "0-1": 15 },
+                etiquetasPeso: { "0-0": "Sentadilla", "0-1": "Curl" },
+                nombreDia: "Día",
+            },
+        ];
+        expect(ejerciciosConProgresoReps(registros)).toEqual(["Día · Curl", "Día · Sentadilla"]);
+    });
+
+    it("es una lista vacía sin registros", () => {
+        expect(ejerciciosConProgresoReps([])).toEqual([]);
     });
 });

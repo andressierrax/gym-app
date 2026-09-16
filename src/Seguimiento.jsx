@@ -5,7 +5,7 @@ import { TituloSeccion, Cargando } from "./ui";
 import { etiquetaFecha, aDate } from "./dominio/fechas";
 import { estadoDelCiclo } from "./dominio/ciclo";
 import { etiquetasDeRegistro } from "./dominio/registros";
-import { pesosPorEjercicio, ejerciciosConProgreso } from "./dominio/progreso";
+import { pesosPorEjercicio, ejerciciosConProgreso, repsPorEjercicio, ejerciciosConProgresoReps } from "./dominio/progreso";
 import GraficoProgreso from "./GraficoProgreso";
 
 export default function Seguimiento() {
@@ -209,7 +209,25 @@ export default function Seguimiento() {
                                 </p>
                                 <div className="grid gap-3">
                                     {ejercicios.map(nombre => (
-                                        <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicio[nombre]} />
+                                        <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicio[nombre]} campo="peso" unidad="kg" />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {(() => {
+                        const porEjercicioReps = repsPorEjercicio(historialClienta);
+                        const ejerciciosReps = ejerciciosConProgresoReps(historialClienta);
+                        if (ejerciciosReps.length === 0) return null;
+                        return (
+                            <div className="mb-8">
+                                <p className="text-amatista-dark/50 text-[10px] font-black uppercase tracking-widest mb-3">
+                                    Progreso de repeticiones
+                                </p>
+                                <div className="grid gap-3">
+                                    {ejerciciosReps.map(nombre => (
+                                        <GraficoProgreso key={nombre} titulo={nombre} puntos={porEjercicioReps[nombre]} campo="reps" unidad=" rep" />
                                     ))}
                                 </div>
                             </div>

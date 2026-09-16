@@ -39,6 +39,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
     const [checks, setChecks] = useState(() => leerLocal(idSesion).checks);
     const [notas, setNotas] = useState(() => leerLocal(idSesion).notas);
     const [pesos, setPesos] = useState(() => leerLocal(idSesion).pesos);
+    const [reps, setReps] = useState(() => leerLocal(idSesion).reps);
     const [estadoGuardado, setEstadoGuardado] = useState("");
     const [gifAmpliado, setGifAmpliado] = useState(null);
 
@@ -62,6 +63,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                 setChecks(datos.checks ?? {});
                 setNotas(datos.notas ?? {});
                 setPesos(datos.pesos ?? {});
+                setReps(datos.reps ?? {});
             })
             .catch((error) => console.error("No se pudo cargar la sesión:", error));
 
@@ -70,14 +72,14 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
 
     // Copia en el móvil en CADA pulsación: una recarga a media frase no pierde nada.
     const guardarEnMovil = useCallback(
-        (nuevosChecks, nuevasNotas, nuevosPesos) =>
-            guardarLocal(idSesion, { checks: nuevosChecks, notas: nuevasNotas, pesos: nuevosPesos }),
+        (nuevosChecks, nuevasNotas, nuevosPesos, nuevosReps) =>
+            guardarLocal(idSesion, { checks: nuevosChecks, notas: nuevasNotas, pesos: nuevosPesos, reps: nuevosReps }),
         [idSesion]
     );
 
-    const guardarSesion = useCallback(async (nuevosChecks, nuevasNotas, nuevosPesos) => {
+    const guardarSesion = useCallback(async (nuevosChecks, nuevasNotas, nuevosPesos, nuevosReps) => {
         if (!uid || !idSesion) return;
-        const marca = guardarEnMovil(nuevosChecks, nuevasNotas, nuevosPesos);
+        const marca = guardarEnMovil(nuevosChecks, nuevasNotas, nuevosPesos, nuevosReps);
 
         setEstadoGuardado("guardando");
         try {
@@ -86,6 +88,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                 checks: nuevosChecks,
                 notas: nuevasNotas,
                 pesos: nuevosPesos,
+                reps: nuevosReps,
                 actualizadoCliente: marca,
                 actualizado: serverTimestamp(),
             }, { merge: true });
@@ -105,13 +108,13 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
     const toggleCheck = (index) => {
         const siguiente = { ...checks, [index]: !checks[index] };
         setChecks(siguiente);
-        guardarSesion(siguiente, notas, pesos);
+        guardarSesion(siguiente, notas, pesos, reps);
     };
 
     const cambiarNota = (index, valor) => {
         const siguiente = { ...notas, [index]: valor };
         setNotas(siguiente);
-        guardarEnMovil(checks, siguiente, pesos);
+        guardarEnMovil(checks, siguiente, pesos, reps);
     };
 
     // Clave `bloqueIndex` a secas cuando el set no tiene numerales detectados
@@ -126,11 +129,24 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
             if (Number.isFinite(numero)) siguiente[clave] = numero;
         }
         setPesos(siguiente);
-        guardarEnMovil(checks, notas, siguiente);
+        guardarEnMovil(checks, notas, siguiente, reps);
+    };
+
+    // Mismo esquema de claves que `cambiarPeso`, para las repeticiones hechas.
+    const cambiarReps = (clave, valor) => {
+        const siguiente = { ...reps };
+        if (valor === "") {
+            delete siguiente[clave];
+        } else {
+            const numero = Number(valor);
+            if (Number.isFinite(numero)) siguiente[clave] = numero;
+        }
+        setReps(siguiente);
+        guardarEnMovil(checks, notas, pesos, siguiente);
     };
 
     const finalizar = async () => {
-        await guardarSesion(checks, notas, pesos); // que lo último escrito llegue
+        await guardarSesion(checks, notas, pesos, reps); // que lo último escrito llegue
 
         // Etiqueta de cada clave de `pesos`, para que el progreso pueda
         // mostrar "Banca declinada con barra" en vez de solo "SET #1".
@@ -149,6 +165,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
             totalBloques,
             notas,
             pesos,
+            reps,
             etiquetasPeso,
             titulos: bloques.map(b => b.titulo ?? ""),
         });
@@ -272,20 +289,36 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                                                         </p>
                                                     )}
                                                 </div>
-                                                <label className="flex items-baseline gap-2">
-                                                    <input
-                                                        type="number"
-                                                        inputMode="decimal"
-                                                        step="0.5"
-                                                        min="0"
-                                                        placeholder="0"
-                                                        value={pesos[index] ?? ""}
-                                                        onChange={(e) => cambiarPeso(String(index), e.target.value)}
-                                                        onBlur={() => guardarSesion(checks, notas, pesos)}
-                                                        className="w-24 bg-white/10 rounded-xl px-3 py-2 text-white text-2xl font-black outline-none placeholder-white/20 border border-white/10"
-                                                    />
-                                                    <span className="text-white/50 text-xs font-black uppercase">kg</span>
-                                                </label>
+                                                <div className="flex items-baseline gap-3">
+                                                    <label className="flex items-baseline gap-2">
+                                                        <input
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            step="0.5"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            value={pesos[index] ?? ""}
+                                                            onChange={(e) => cambiarPeso(String(index), e.target.value)}
+                                                            onBlur={() => guardarSesion(checks, notas, pesos, reps)}
+                                                            className="w-24 bg-white/10 rounded-xl px-3 py-2 text-white text-2xl font-black outline-none placeholder-white/20 border border-white/10"
+                                                        />
+                                                        <span className="text-white/50 text-xs font-black uppercase">kg</span>
+                                                    </label>
+                                                    <label className="flex items-baseline gap-2">
+                                                        <input
+                                                            type="number"
+                                                            inputMode="numeric"
+                                                            step="1"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            value={reps[index] ?? ""}
+                                                            onChange={(e) => cambiarReps(String(index), e.target.value)}
+                                                            onBlur={() => guardarSesion(checks, notas, pesos, reps)}
+                                                            className="w-20 bg-white/10 rounded-xl px-3 py-2 text-white text-2xl font-black outline-none placeholder-white/20 border border-white/10"
+                                                        />
+                                                        <span className="text-white/50 text-xs font-black uppercase">rep</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </>
                                     );
@@ -306,20 +339,36 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                                                             <p className="text-amatista-light/60 text-[9px] font-bold whitespace-nowrap">
                                                                 {pesosSemanaAnterior[clave] != null ? `Antes: ${pesosSemanaAnterior[clave]}kg` : ""}
                                                             </p>
-                                                            <label className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2.5 py-1.5 border border-white/10 shrink-0">
-                                                                <input
-                                                                    type="number"
-                                                                    inputMode="decimal"
-                                                                    step="0.5"
-                                                                    min="0"
-                                                                    placeholder="0"
-                                                                    value={pesos[clave] ?? ""}
-                                                                    onChange={(e) => cambiarPeso(clave, e.target.value)}
-                                                                    onBlur={() => guardarSesion(checks, notas, pesos)}
-                                                                    className="w-14 bg-transparent text-white text-lg font-black text-right outline-none placeholder-white/20"
-                                                                />
-                                                                <span className="text-white/50 text-[10px] font-black uppercase">kg</span>
-                                                            </label>
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                <label className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2.5 py-1.5 border border-white/10">
+                                                                    <input
+                                                                        type="number"
+                                                                        inputMode="decimal"
+                                                                        step="0.5"
+                                                                        min="0"
+                                                                        placeholder="0"
+                                                                        value={pesos[clave] ?? ""}
+                                                                        onChange={(e) => cambiarPeso(clave, e.target.value)}
+                                                                        onBlur={() => guardarSesion(checks, notas, pesos, reps)}
+                                                                        className="w-14 bg-transparent text-white text-lg font-black text-right outline-none placeholder-white/20"
+                                                                    />
+                                                                    <span className="text-white/50 text-[10px] font-black uppercase">kg</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2.5 py-1.5 border border-white/10">
+                                                                    <input
+                                                                        type="number"
+                                                                        inputMode="numeric"
+                                                                        step="1"
+                                                                        min="0"
+                                                                        placeholder="0"
+                                                                        value={reps[clave] ?? ""}
+                                                                        onChange={(e) => cambiarReps(clave, e.target.value)}
+                                                                        onBlur={() => guardarSesion(checks, notas, pesos, reps)}
+                                                                        className="w-12 bg-transparent text-white text-lg font-black text-right outline-none placeholder-white/20"
+                                                                    />
+                                                                    <span className="text-white/50 text-[10px] font-black uppercase">rep</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -341,7 +390,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                                         rows="2"
                                         value={notas[index] ?? ""}
                                         onChange={(e) => cambiarNota(index, e.target.value)}
-                                        onBlur={() => guardarSesion(checks, notas, pesos)}
+                                        onBlur={() => guardarSesion(checks, notas, pesos, reps)}
                                     />
                                 </div>
 

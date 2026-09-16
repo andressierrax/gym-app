@@ -1,6 +1,6 @@
 import type { Sesion, SesionServidor } from "./tipos";
 
-export const SESION_VACIA: Sesion = { checks: {}, notas: {}, pesos: {}, actualizado: 0 };
+export const SESION_VACIA: Sesion = { checks: {}, notas: {}, pesos: {}, reps: {}, actualizado: 0 };
 
 /**
  * Id de sesión para una clienta de ciclo: determinista por semana y día, así
@@ -51,6 +51,7 @@ export function leerLocal(
             checks: datos.checks ?? {},
             notas: datos.notas ?? {},
             pesos: datos.pesos ?? {},
+            reps: datos.reps ?? {},
             actualizado: datos.actualizado ?? 0,
         };
     } catch {

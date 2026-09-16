@@ -40,3 +40,6 @@ backups/
 # son parte de la app ni deben compartirse entre máquinas.
 .firebase/
 .claude/
+
+# Credencial de la cuenta de servicio del Admin SDK: nunca debe subirse a git.
+clave-admin.json
