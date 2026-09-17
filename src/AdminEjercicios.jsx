@@ -10,6 +10,7 @@ export default function AdminEjercicios({ soloLectura = false }) {
     const [archivo, setArchivo] = useState(null);
     const [ejercicios, setEjercicios] = useState([]);
     const [cargando, setCargando] = useState(false);
+    const [busqueda, setBusqueda] = useState("");
 
     // Separamos la lectura del cambio de estado para no llamar a setState de
     // forma síncrona dentro del efecto.
@@ -100,9 +101,24 @@ export default function AdminEjercicios({ soloLectura = false }) {
         setCargando(false);
     };
 
+    const ejerciciosFiltrados = ejercicios.filter(ex =>
+        (ex.name ?? "").toLowerCase().includes(busqueda.trim().toLowerCase())
+    );
+
     return (
         <div className="animate-in fade-in duration-500">
             <TituloSeccion titulo="Biblioteca" subtitulo="Recursos Visuales Trinity" />
+
+            {ejercicios.length > 0 && (
+                <div className="mb-6">
+                    <Entrada
+                        type="text"
+                        placeholder="Buscar ejercicio..."
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                    />
+                </div>
+            )}
 
             {!soloLectura && (
                 <form onSubmit={guardarEjercicio} className="mb-10">
@@ -137,8 +153,12 @@ export default function AdminEjercicios({ soloLectura = false }) {
                     <div className="col-span-2 text-center py-10">
                         <p className="text-amatista-dark/40 font-bold italic text-xs uppercase tracking-widest">No hay ejercicios aún</p>
                     </div>
+                ) : ejerciciosFiltrados.length === 0 ? (
+                    <div className="col-span-2 text-center py-10">
+                        <p className="text-amatista-dark/40 font-bold italic text-xs uppercase tracking-widest">Ningún ejercicio coincide con "{busqueda}"</p>
+                    </div>
                 ) : (
-                    ejercicios.map(ex => (
+                    ejerciciosFiltrados.map(ex => (
                         <div key={ex.id} className="bg-white p-3 rounded-[2rem] shadow-sm border border-amatista-light/30 text-center relative">
 
                             {/* BOTÓN ELIMINAR (Solo visible si no es soloLectura) */}
