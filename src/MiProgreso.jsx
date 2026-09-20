@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { db, auth } from "./firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import GraficoProgreso from "./GraficoProgreso";
+import TarjetaResumen from "./TarjetaResumen";
+import { resumirRegistros } from "./dominio/resumen";
 import { Cargando, Vacio, TituloSeccion } from "./ui";
 import { pesosPorEjercicio, ejerciciosConProgreso, repsPorEjercicio, ejerciciosConProgresoReps } from "./dominio/progreso";
 
@@ -45,6 +47,8 @@ export default function MiProgreso() {
     return (
         <div className="text-amatista-dark pb-24 animate-in fade-in duration-500">
             <TituloSeccion titulo="Mi Progreso" subtitulo="Peso y repeticiones por set" />
+
+            <TarjetaResumen resumen={resumirRegistros(registros)} paraClienta />
 
             {ejerciciosPeso.length === 0 && ejerciciosReps.length === 0 ? (
                 <Vacio>

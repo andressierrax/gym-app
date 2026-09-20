@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { db } from "./firebase";
-import { collection, query, where, onSnapshot, orderBy, limit, getDocs, doc, writeBatch } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, getDocs, doc, writeBatch } from "firebase/firestore";
 import { TituloSeccion, Cargando } from "./ui";
 import { etiquetaFecha, aDate } from "./dominio/fechas";
 import { estadoDelCiclo } from "./dominio/ciclo";
 import { etiquetasDeRegistro } from "./dominio/registros";
 import { pesosPorEjercicio, ejerciciosConProgreso, repsPorEjercicio, ejerciciosConProgresoReps } from "./dominio/progreso";
 import GraficoProgreso from "./GraficoProgreso";
+import TarjetaResumen from "./TarjetaResumen";
+import { resumirRegistros, alertasDe, DIAS_SIN_ENTRENAR_ALERTA } from "./dominio/resumen";
 
 export default function Seguimiento() {
     const [registros, setRegistros] = useState([]);
@@ -15,13 +17,11 @@ export default function Seguimiento() {
     const [abierto, setAbierto] = useState(null);
     const [borrando, setBorrando] = useState(false);
     const [ciclos, setCiclos] = useState({});
-    const [historialClienta, setHistorialClienta] = useState([]);
 
     useEffect(() => {
         const q = query(
             collection(db, "registros_entrenamiento"),
-            orderBy("fecha", "desc"),
-            limit(50)
+            orderBy("fecha", "desc")
         );
 
         // onSnapshot en lugar de getDocs: la pantalla se anuncia como actividad
@@ -93,28 +93,6 @@ export default function Seguimiento() {
         return () => { vivo = false; };
     }, []);
 
-    // Progreso de la clienta filtrada: se trae aparte y sin límite, porque el
-    // feed de arriba solo enseña los últimos 50 registros de TODAS las
-    // clientas, y un gráfico de progreso necesita el histórico completo de una.
-    useEffect(() => {
-        let vivo = true;
-
-        const cargar = async () => {
-            const clienteId = registros.find(r => r.clienteNombre === filtro)?.clienteId;
-            if (!clienteId) { if (vivo) setHistorialClienta([]); return; }
-            try {
-                const snap = await getDocs(query(collection(db, "registros_entrenamiento"), where("clienteId", "==", clienteId)));
-                if (vivo) setHistorialClienta(snap.docs.map(d => d.data()));
-            } catch (error) {
-                console.error("No se pudo cargar el progreso de la clienta:", error);
-                if (vivo) setHistorialClienta([]);
-            }
-        };
-
-        cargar();
-        return () => { vivo = false; };
-    }, [filtro, registros]);
-
     // La fase que tenía ESE día, no la de hoy: es lo que permite interpretar
     // un entrenamiento flojo de la semana pasada.
     const faseDelRegistro = (reg) => {
@@ -130,10 +108,16 @@ export default function Seguimiento() {
 
     // La lista de clientas sale de los propios registros: no hace falta
     // consultar `users` solo para poder filtrar.
+    // Se lee el historial completo (sin límite) porque el resumen y las alertas
+    // necesitan todo el historial de cada clienta, no solo los últimos entrenos.
     const clientas = [...new Set(registros.map(r => r.clienteNombre).filter(Boolean))]
         .sort()
-        .map(nombre => ({ nombre, cantidad: registros.filter(r => r.clienteNombre === nombre).length }));
+        .map(nombre => {
+            const suyos = registros.filter(r => r.clienteNombre === nombre);
+            return { nombre, cantidad: suyos.length, alertas: alertasDe(resumirRegistros(suyos)) };
+        });
     const visibles = filtro ? registros.filter(r => r.clienteNombre === filtro) : registros;
+    const historialClienta = visibles;
 
     if (loading) return <Cargando texto="Cargando Actividad..." />;
 
@@ -182,6 +166,20 @@ export default function Seguimiento() {
                                         <p className="text-amatista-dark/40 text-[9px] font-bold uppercase tracking-widest">
                                             {c.cantidad} entrenamiento{c.cantidad === 1 ? "" : "s"}
                                         </p>
+                                        {(c.alertas.sinEntrenar || c.alertas.estancados > 0) && (
+                                            <div className="flex flex-wrap gap-1 mt-1.5">
+                                                {c.alertas.sinEntrenar && (
+                                                    <span className="text-[8px] font-black uppercase tracking-tight text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded-lg">
+                                                        +{DIAS_SIN_ENTRENAR_ALERTA} días sin entrenar
+                                                    </span>
+                                                )}
+                                                {c.alertas.estancados > 0 && (
+                                                    <span className="text-[8px] font-black uppercase tracking-tight text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg">
+                                                        {c.alertas.estancados} sin progreso
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <span className="text-amatista-dark/30 text-2xl shrink-0">›</span>
@@ -197,6 +195,8 @@ export default function Seguimiento() {
                     >
                         ← Todas las clientas
                     </button>
+
+                    <TarjetaResumen resumen={resumirRegistros(historialClienta)} />
 
                     {(() => {
                         const porEjercicio = pesosPorEjercicio(historialClienta);
