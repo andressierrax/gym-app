@@ -10,6 +10,7 @@ export default function Timer() {
     // duración reinicie la cuenta en vez de no cambiar nada.
     const [descanso, setDescanso] = useState(null);
     const [restante, setRestante] = useState(0);
+    const [abierto, setAbierto] = useState(false);
     const audioRef = useRef(null);
 
     const avisar = useCallback(() => {
@@ -84,28 +85,42 @@ export default function Timer() {
         setRestante(0);
     };
 
+    // Arriba a la derecha y plegado por defecto: abajo tapaba las notas y el
+    // botón de finalizar. `top-20` lo deja justo debajo del botón Salir.
     return (
-        <div className="fixed bottom-24 right-6 z-50">
+        <div className="fixed top-20 right-3 z-40">
             {descanso ? (
-                <div className="bg-blue-600 text-white w-20 h-20 rounded-full flex flex-col items-center justify-center shadow-2xl border-4 border-black animate-pulse">
-                    <span className="text-2xl font-black">{restante}s</span>
-                    <button onClick={parar} className="text-[10px] font-bold uppercase">Parar</button>
+                <div className="bg-blue-600 text-white rounded-full pl-4 pr-3 py-1.5 flex items-center gap-2 shadow-lg animate-pulse">
+                    <span className="text-sm font-black">{restante}s</span>
+                    <button onClick={parar} className="text-[9px] font-bold uppercase bg-white/20 rounded-full px-2 py-1">Parar</button>
+                </div>
+            ) : abierto ? (
+                <div className="bg-zinc-800/95 rounded-full p-1.5 flex items-center gap-1.5 shadow-lg">
+                    {OPCIONES.map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => { iniciar(t); setAbierto(false); }}
+                            className="bg-zinc-700 text-white w-9 h-9 rounded-full font-bold text-[10px] active:bg-blue-600 transition-colors"
+                        >
+                            {t}s
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setAbierto(false)}
+                        aria-label="Cerrar temporizador"
+                        className="text-white/60 w-7 h-9 text-sm font-black"
+                    >
+                        ✕
+                    </button>
                 </div>
             ) : (
-                <div className="flex flex-col gap-2">
-                    <p className="text-[10px] text-center font-bold text-zinc-500 uppercase">Descanso</p>
-                    <div className="flex gap-2">
-                        {OPCIONES.map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => iniciar(t)}
-                                className="bg-zinc-800 text-white w-12 h-12 rounded-2xl border border-zinc-700 font-bold text-xs hover:bg-blue-600 transition-colors"
-                            >
-                                {t}s
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <button
+                    onClick={() => setAbierto(true)}
+                    aria-label="Temporizador de descanso"
+                    className="bg-zinc-800/90 text-white w-10 h-10 rounded-full shadow-lg text-base active:scale-90 transition-transform"
+                >
+                    ⏱
+                </button>
             )}
         </div>
     );
