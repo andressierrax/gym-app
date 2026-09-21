@@ -1,10 +1,10 @@
 import { useState } from "react";
 import GraficoProgreso from "./GraficoProgreso";
-import { pesosPorEjercicio, repsPorEjercicio } from "./dominio/progreso";
+import { pesosPorEjercicio, repsPorEjercicio, pesosLivPorEjercicio, repsLivPorEjercicio } from "./dominio/progreso";
 
 const SEPARADOR = " · ";
 
-function Cambio({ inicio, ultimo, unidad, estancado }) {
+function Cambio({ etiqueta, inicio, ultimo, unidad, estancado }) {
     if (inicio === undefined) return null;
     const delta = Math.round((ultimo - inicio) * 100) / 100;
     const color = estancado
@@ -16,6 +16,7 @@ function Cambio({ inicio, ultimo, unidad, estancado }) {
 
     return (
         <div className="flex items-center justify-end gap-2">
+            <span className="text-amatista-dark/40 text-[9px] font-black w-3 text-center">{etiqueta}</span>
             <span className="text-amatista-dark text-xs font-black whitespace-nowrap">
                 {inicio === ultimo ? `${ultimo}` : `${inicio} → ${ultimo}`} {unidad}
             </span>
@@ -31,15 +32,18 @@ function Cambio({ inicio, ultimo, unidad, estancado }) {
  * repeticiones (primer registro → último). Al tocar una fila se abre el
  * gráfico de ese ejercicio, así la vista normal queda corta y limpia.
  */
-export default function TablaProgreso({ registros, estancados = [] }) {
+export default function TablaProgreso({ registros, estancados = [], estancadosLiv = [] }) {
     const [abierta, setAbierta] = useState(null);
 
     const pesos = pesosPorEjercicio(registros);
     const reps = repsPorEjercicio(registros);
-    const etiquetas = [...new Set([...Object.keys(pesos), ...Object.keys(reps)])]
+    const pesosLiv = pesosLivPorEjercicio(registros);
+    const repsLiv = repsLivPorEjercicio(registros);
+    const etiquetas = [...new Set([...Object.keys(pesos), ...Object.keys(reps), ...Object.keys(pesosLiv), ...Object.keys(repsLiv)])]
         .sort((a, b) => a.localeCompare(b));
 
     if (etiquetas.length === 0) return null;
+    const hayLiviana = Object.keys(pesosLiv).length + Object.keys(repsLiv).length > 0;
 
     const grupos = {};
     for (const etiqueta of etiquetas) {
@@ -54,6 +58,11 @@ export default function TablaProgreso({ registros, estancados = [] }) {
             <p className="text-amatista-dark/50 text-[10px] font-black uppercase tracking-widest mb-3">
                 Progreso por ejercicio
             </p>
+            {hayLiviana && (
+                <p className="text-amatista-dark/40 text-[9px] font-bold uppercase tracking-widest -mt-2 mb-3">
+                    P = carga pesada · L = carga liviana
+                </p>
+            )}
 
             <div className="space-y-4">
                 {Object.entries(grupos).map(([grupo, filas]) => (
@@ -65,7 +74,10 @@ export default function TablaProgreso({ registros, estancados = [] }) {
                         {filas.map(({ etiqueta, nombre }) => {
                             const sp = pesos[etiqueta];
                             const sr = reps[etiqueta];
+                            const spl = pesosLiv[etiqueta];
+                            const srl = repsLiv[etiqueta];
                             const estancado = estancados.includes(etiqueta);
+                            const estancadoLiv = estancadosLiv.includes(etiqueta);
                             const desplegada = abierta === etiqueta;
 
                             return (
@@ -78,15 +90,27 @@ export default function TablaProgreso({ registros, estancados = [] }) {
                                             {nombre}
                                         </span>
                                         <span className="shrink-0 space-y-1">
-                                            {sp && <Cambio inicio={sp[0].peso} ultimo={sp.at(-1).peso} unidad="kg" estancado={estancado} />}
-                                            {sr && <Cambio inicio={sr[0].reps} ultimo={sr.at(-1).reps} unidad="rep" />}
+                                            {sp && <Cambio etiqueta="P" inicio={sp[0].peso} ultimo={sp.at(-1).peso} unidad="kg" estancado={estancado} />}
+                                            {sr && <Cambio etiqueta="P" inicio={sr[0].reps} ultimo={sr.at(-1).reps} unidad="rep" />}
+                                            {spl && <Cambio etiqueta="L" inicio={spl[0].peso} ultimo={spl.at(-1).peso} unidad="kg" estancado={estancadoLiv} />}
+                                            {srl && <Cambio etiqueta="L" inicio={srl[0].reps} ultimo={srl.at(-1).reps} unidad="rep" />}
                                         </span>
                                     </button>
 
                                     {desplegada && (
                                         <div className="px-3 pb-3 grid gap-3">
-                                            {sp && <GraficoProgreso titulo={`${nombre} · peso`} puntos={sp} campo="peso" unidad="kg" />}
-                                            {sr && <GraficoProgreso titulo={`${nombre} · repeticiones`} puntos={sr} campo="reps" unidad=" rep" />}
+                                            {(sp || spl) && (
+                                                <GraficoProgreso titulo={`${nombre} · peso`} series={[
+                                                    { puntos: sp, campo: "peso", unidad: "kg", carga: "pesada" },
+                                                    { puntos: spl, campo: "peso", unidad: "kg", carga: "liviana" },
+                                                ]} />
+                                            )}
+                                            {(sr || srl) && (
+                                                <GraficoProgreso titulo={`${nombre} · repeticiones`} series={[
+                                                    { puntos: sr, campo: "reps", unidad: " rep", carga: "pesada" },
+                                                    { puntos: srl, campo: "reps", unidad: " rep", carga: "liviana" },
+                                                ]} />
+                                            )}
                                         </div>
                                     )}
                                 </div>

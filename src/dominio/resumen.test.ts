@@ -36,7 +36,7 @@ describe("resumirRegistros", () => {
 
     it("detecta mejora de peso entre las dos últimas sesiones del mismo ejercicio", () => {
         const r = resumirRegistros([reg(14, { pesos: { "0": 40 } }), reg(7, { pesos: { "0": 45 } })], ahora);
-        expect(r.mejoras).toEqual([{ etiqueta: "Pierna · Sentadilla", unidad: "kg", anterior: 40, actual: 45 }]);
+        expect(r.mejoras).toEqual([{ etiqueta: "Pierna · Sentadilla", carga: "pesada", unidad: "kg", anterior: 40, actual: 45 }]);
     });
 
     it("detecta mejora de repeticiones", () => {
@@ -66,6 +66,23 @@ describe("resumirRegistros", () => {
     it("con menos de 3 sesiones no hay estancamiento", () => {
         const r = resumirRegistros([reg(7, { pesos: { "0": 40 } }), reg(1, { pesos: { "0": 40 } })], ahora);
         expect(r.estancados).toEqual([]);
+    });
+});
+
+describe("carga liviana", () => {
+    it("mide la mejora de la liviana aparte de la pesada", () => {
+        const r = resumirRegistros([
+            reg(14, { pesos: { "0": 50 }, pesosLiv: { "0": 30 } }),
+            reg(7, { pesos: { "0": 50 }, pesosLiv: { "0": 35 } }),
+        ], ahora);
+        expect(r.mejoras).toEqual([{ etiqueta: "Pierna · Sentadilla", carga: "liviana", unidad: "kg", anterior: 30, actual: 35 }]);
+    });
+
+    it("una liviana estancada no marca estancada a la pesada", () => {
+        const r = resumirRegistros([14, 7, 1].map(d => reg(d, { pesos: { "0": 50 + d }, pesosLiv: { "0": 30 } })), ahora);
+        expect(r.estancados).toEqual([]);
+        expect(r.estancadosLiv).toEqual(["Pierna · Sentadilla"]);
+        expect(alertasDe(r).estancados).toBe(1);
     });
 });
 

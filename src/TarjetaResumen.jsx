@@ -17,7 +17,8 @@ function Dato({ valor, etiqueta }) {
  * entrenadora y la pestaña Progreso de la clienta: mismos datos, distinto tono.
  */
 export default function TarjetaResumen({ resumen, paraClienta = false }) {
-    const { entrenamientos, diasSinEntrenar, constancia, mejoras, estancados } = resumen;
+    const { entrenamientos, diasSinEntrenar, constancia, mejoras, estancados, estancadosLiv } = resumen;
+    const sinProgreso = [...estancados, ...estancadosLiv.map(e => `${e} (liviana)`)];
     const mejorasVisibles = mejoras.slice(0, 5);
 
     return (
@@ -39,8 +40,11 @@ export default function TarjetaResumen({ resumen, paraClienta = false }) {
                     </p>
                     <ul className="space-y-1">
                         {mejorasVisibles.map(m => (
-                            <li key={`${m.etiqueta}-${m.unidad}`} className="text-white text-[11px] font-bold flex justify-between gap-3">
-                                <span className="truncate">{m.etiqueta}</span>
+                            <li key={`${m.etiqueta}-${m.carga}-${m.unidad}`} className="text-white text-[11px] font-bold flex justify-between gap-3">
+                                <span className="truncate">
+                                    {m.etiqueta}
+                                    <span className="text-white/40 font-medium"> · {m.carga}</span>
+                                </span>
                                 <span className="text-emerald-300 shrink-0">
                                     ▲ {m.anterior} → {m.actual} {m.unidad}
                                 </span>
@@ -50,20 +54,20 @@ export default function TarjetaResumen({ resumen, paraClienta = false }) {
                 </div>
             )}
 
-            {!paraClienta && estancados.length > 0 && (
+            {!paraClienta && sinProgreso.length > 0 && (
                 <div>
                     <p className="text-amber-300 text-[9px] font-black uppercase tracking-widest mb-2">
                         Sin progreso en 3 sesiones
                     </p>
                     <ul className="space-y-1">
-                        {estancados.map(e => (
+                        {sinProgreso.map(e => (
                             <li key={e} className="text-white/80 text-[11px] font-bold truncate">{e}</li>
                         ))}
                     </ul>
                 </div>
             )}
 
-            {mejorasVisibles.length === 0 && (paraClienta || estancados.length === 0) && (
+            {mejorasVisibles.length === 0 && (paraClienta || sinProgreso.length === 0) && (
                 <p className="text-white/40 text-[11px] font-medium">
                     {paraClienta
                         ? "Anota tu peso y repeticiones en cada set y aquí verás cómo mejoras."

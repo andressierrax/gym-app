@@ -37,18 +37,18 @@ describe("idSesionCiclo", () => {
 
 describe("leerLocal", () => {
     it("devuelve una sesión vacía si no hay nada guardado", () => {
-        expect(leerLocal(idSesionCiclo("ana", 1, 1), almacenFalso())).toEqual({ checks: {}, notas: {}, pesos: {}, reps: {}, actualizado: 0 });
+        expect(leerLocal(idSesionCiclo("ana", 1, 1), almacenFalso())).toEqual({ checks: {}, notas: {}, pesos: {}, reps: {}, pesosLiv: {}, repsLiv: {}, actualizado: 0 });
     });
 
     it("recupera lo que se guardó", () => {
         const a = almacenFalso();
-        guardarLocal(idSesionCiclo("ana", 1, 1), { checks: { 0: true }, notas: { 0: "80kg" }, pesos: { 0: 80 }, reps: { 0: 12 } }, a, 1000);
-        expect(leerLocal(idSesionCiclo("ana", 1, 1), a)).toEqual({ checks: { 0: true }, notas: { 0: "80kg" }, pesos: { 0: 80 }, reps: { 0: 12 }, actualizado: 1000 });
+        guardarLocal(idSesionCiclo("ana", 1, 1), { checks: { 0: true }, notas: { 0: "80kg" }, pesos: { 0: 80 }, reps: { 0: 12 }, pesosLiv: {}, repsLiv: {} }, a, 1000);
+        expect(leerLocal(idSesionCiclo("ana", 1, 1), a)).toEqual({ checks: { 0: true }, notas: { 0: "80kg" }, pesos: { 0: 80 }, reps: { 0: 12 }, pesosLiv: {}, repsLiv: {}, actualizado: 1000 });
     });
 
     it("no mezcla días distintos", () => {
         const a = almacenFalso();
-        guardarLocal(idSesionCiclo("ana", 1, 1), { checks: { 0: true }, notas: {}, pesos: {}, reps: {} }, a, 1000);
+        guardarLocal(idSesionCiclo("ana", 1, 1), { checks: { 0: true }, notas: {}, pesos: {}, reps: {}, pesosLiv: {}, repsLiv: {} }, a, 1000);
         expect(leerLocal(idSesionCiclo("ana", 1, 2), a).checks).toEqual({});
     });
 
@@ -69,12 +69,12 @@ describe("guardarLocal", () => {
             getItem: () => null,
             setItem: () => { throw new Error("QuotaExceededError"); },
         };
-        expect(() => guardarLocal(idSesionCiclo("ana", 1, 1), { checks: {}, notas: {}, pesos: {}, reps: {} }, roto)).not.toThrow();
+        expect(() => guardarLocal(idSesionCiclo("ana", 1, 1), { checks: {}, notas: {}, pesos: {}, reps: {}, pesosLiv: {}, repsLiv: {} }, roto)).not.toThrow();
     });
 });
 
 describe("servidorEsMasReciente", () => {
-    const local = { checks: {}, notas: {}, pesos: {}, reps: {}, actualizado: 100 };
+    const local = { checks: {}, notas: {}, pesos: {}, reps: {}, pesosLiv: {}, repsLiv: {}, actualizado: 100 };
 
     it("el servidor gana si es más nuevo", () => {
         expect(servidorEsMasReciente({ actualizadoCliente: 200 }, local)).toBe(true);
@@ -93,7 +93,7 @@ describe("servidorEsMasReciente", () => {
     });
 
     it("gana en un dispositivo nuevo, que no tiene copia local", () => {
-        expect(servidorEsMasReciente({ actualizadoCliente: 1 }, { checks: {}, notas: {}, pesos: {}, reps: {}, actualizado: 0 })).toBe(true);
+        expect(servidorEsMasReciente({ actualizadoCliente: 1 }, { checks: {}, notas: {}, pesos: {}, reps: {}, pesosLiv: {}, repsLiv: {}, actualizado: 0 })).toBe(true);
     });
 });
 

@@ -35,6 +35,7 @@ export default function VistaCliente() {
     const [celebracion, setCelebracion] = useState(null);
     const [notasSemanaAnterior, setNotasSemanaAnterior] = useState({});
     const [pesosSemanaAnterior, setPesosSemanaAnterior] = useState({});
+    const [pesosLivSemanaAnterior, setPesosLivSemanaAnterior] = useState({});
 
     const uid = auth.currentUser?.uid;
 
@@ -86,6 +87,7 @@ export default function VistaCliente() {
         if (anterior === null || !uid) {
             setNotasSemanaAnterior({});
             setPesosSemanaAnterior({});
+            setPesosLivSemanaAnterior({});
             return;
         }
         getDoc(doc(db, "sesiones", idSesionCiclo(uid, anterior, diaActual)))
@@ -93,8 +95,9 @@ export default function VistaCliente() {
                 if (!vivo) return;
                 setNotasSemanaAnterior(snap.exists() ? (snap.data().notas ?? {}) : {});
                 setPesosSemanaAnterior(snap.exists() ? (snap.data().pesos ?? {}) : {});
+                setPesosLivSemanaAnterior(snap.exists() ? (snap.data().pesosLiv ?? {}) : {});
             })
-            .catch(() => { if (vivo) { setNotasSemanaAnterior({}); setPesosSemanaAnterior({}); } });
+            .catch(() => { if (vivo) { setNotasSemanaAnterior({}); setPesosSemanaAnterior({}); setPesosLivSemanaAnterior({}); } });
         return () => { vivo = false; };
     }, [uid, semanaActual, diaActual]);
 
@@ -102,7 +105,7 @@ export default function VistaCliente() {
         (p) => p.semana === parseInt(semanaActual) && p.dia === parseInt(diaActual)
     );
 
-    const finalizar = async ({ completados, totalBloques, notas, pesos, reps, etiquetasPeso, titulos }) => {
+    const finalizar = async ({ completados, totalBloques, notas, pesos, reps, pesosLiv, repsLiv, etiquetasPeso, titulos }) => {
         try {
             const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
             const nombreReal = userDoc.exists() ? userDoc.data().name : auth.currentUser.email;
@@ -120,6 +123,8 @@ export default function VistaCliente() {
                 notas,
                 pesos,
                 reps,
+                pesosLiv,
+                repsLiv,
                 etiquetasPeso,
                 titulos,
                 fecha: new Date(),
@@ -208,6 +213,7 @@ export default function VistaCliente() {
                         onFinalizar={finalizar}
                         notasSemanaAnterior={notasSemanaAnterior}
                         pesosSemanaAnterior={pesosSemanaAnterior}
+                        pesosLivSemanaAnterior={pesosLivSemanaAnterior}
                     />
                 </div>
             ) : errorCarga ? (

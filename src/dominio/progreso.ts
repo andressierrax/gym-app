@@ -25,7 +25,7 @@ function etiquetaDeBloque(registro: RegistroConPesos, clave: string): string {
  */
 function valoresPorEjercicio<Nombre extends string>(
     registros: RegistroConPesos[],
-    campo: "pesos" | "reps",
+    campo: "pesos" | "reps" | "pesosLiv" | "repsLiv",
     nombreCampo: Nombre,
 ): Record<string, ({ etiqueta: string; fecha: FechaFirestore } & Record<Nombre, number>)[]> {
     const porEtiqueta: Record<string, ({ etiqueta: string; fecha: FechaFirestore } & Record<Nombre, number>)[]> = {};
@@ -54,6 +54,16 @@ export function pesosPorEjercicio(registros: RegistroConPesos[]): Record<string,
 /** Repeticiones por bloque, con el mismo agrupado que `pesosPorEjercicio`. */
 export function repsPorEjercicio(registros: RegistroConPesos[]): Record<string, RegistroDeRep[]> {
     return valoresPorEjercicio(registros, "reps", "reps");
+}
+
+/** Peso de la carga liviana; misma forma que `pesosPorEjercicio`. */
+export function pesosLivPorEjercicio(registros: RegistroConPesos[]): Record<string, RegistroDePeso[]> {
+    return valoresPorEjercicio(registros, "pesosLiv", "peso");
+}
+
+/** Repeticiones de la carga liviana; misma forma que `repsPorEjercicio`. */
+export function repsLivPorEjercicio(registros: RegistroConPesos[]): Record<string, RegistroDeRep[]> {
+    return valoresPorEjercicio(registros, "repsLiv", "reps");
 }
 
 /** Etiquetas con progreso de peso registrado, alfabéticas. */

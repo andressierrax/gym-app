@@ -5,7 +5,7 @@ import GraficoProgreso from "./GraficoProgreso";
 import TarjetaResumen from "./TarjetaResumen";
 import { resumirRegistros } from "./dominio/resumen";
 import { Cargando, Vacio, TituloSeccion } from "./ui";
-import { pesosPorEjercicio, ejerciciosConProgreso, repsPorEjercicio, ejerciciosConProgresoReps } from "./dominio/progreso";
+import { pesosPorEjercicio, repsPorEjercicio, pesosLivPorEjercicio, repsLivPorEjercicio } from "./dominio/progreso";
 
 /**
  * Progreso de peso por set, para que la clienta vea cómo va subiendo sin
@@ -39,10 +39,20 @@ export default function MiProgreso() {
 
     if (cargando) return <Cargando texto="Cargando tu progreso..." />;
 
-    const pesoPorEjercicio = pesosPorEjercicio(registros);
-    const ejerciciosPeso = ejerciciosConProgreso(registros);
-    const repsPorEjercicioMap = repsPorEjercicio(registros);
-    const ejerciciosReps = ejerciciosConProgresoReps(registros);
+    // Carga pesada y liviana de cada ejercicio comparten gráfico, en dos líneas.
+    const seriesDe = (pesada, liviana, campo, unidad) => {
+        const etiquetas = [...new Set([...Object.keys(pesada), ...Object.keys(liviana)])]
+            .sort((x, y) => x.localeCompare(y));
+        return etiquetas.map(nombre => ({
+            nombre,
+            series: [
+                { puntos: pesada[nombre], campo, unidad, carga: "pesada" },
+                { puntos: liviana[nombre], campo, unidad, carga: "liviana" },
+            ],
+        }));
+    };
+    const graficosPeso = seriesDe(pesosPorEjercicio(registros), pesosLivPorEjercicio(registros), "peso", "kg");
+    const graficosReps = seriesDe(repsPorEjercicio(registros), repsLivPorEjercicio(registros), "reps", " rep");
 
     return (
         <div className="text-amatista-dark pb-24 animate-in fade-in duration-500">
@@ -50,29 +60,29 @@ export default function MiProgreso() {
 
             <TarjetaResumen resumen={resumirRegistros(registros)} paraClienta />
 
-            {ejerciciosPeso.length === 0 && ejerciciosReps.length === 0 ? (
+            {graficosPeso.length === 0 && graficosReps.length === 0 ? (
                 <Vacio>
                     Todavía no has anotado ningún peso ni repeticiones. <br />
                     Regístralos al terminar un set y aquí verás tu avance.
                 </Vacio>
             ) : (
                 <>
-                    {ejerciciosPeso.length > 0 && (
+                    {graficosPeso.length > 0 && (
                         <div className="grid gap-4 mb-6">
-                            {ejerciciosPeso.map(nombre => (
-                                <GraficoProgreso key={nombre} titulo={nombre} puntos={pesoPorEjercicio[nombre]} campo="peso" unidad="kg" />
+                            {graficosPeso.map(g => (
+                                <GraficoProgreso key={g.nombre} titulo={g.nombre} series={g.series} />
                             ))}
                         </div>
                     )}
 
-                    {ejerciciosReps.length > 0 && (
+                    {graficosReps.length > 0 && (
                         <>
                             <p className="text-[10px] font-black text-amatista-dark/60 uppercase tracking-widest mb-3">
                                 Repeticiones por set
                             </p>
                             <div className="grid gap-4">
-                                {ejerciciosReps.map(nombre => (
-                                    <GraficoProgreso key={nombre} titulo={nombre} puntos={repsPorEjercicioMap[nombre]} campo="reps" unidad=" rep" />
+                                {graficosReps.map(g => (
+                                    <GraficoProgreso key={g.nombre} titulo={g.nombre} series={g.series} />
                                 ))}
                             </div>
                         </>

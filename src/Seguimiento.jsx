@@ -197,7 +197,10 @@ export default function Seguimiento() {
 
                     <TarjetaResumen resumen={resumirRegistros(historialClienta)} />
 
-                    <TablaProgreso registros={historialClienta} estancados={resumirRegistros(historialClienta).estancados} />
+                    {(() => {
+                        const resumen = resumirRegistros(historialClienta);
+                        return <TablaProgreso registros={historialClienta} estancados={resumen.estancados} estancadosLiv={resumen.estancadosLiv} />;
+                    })()}
 
                     <p className="text-amatista-dark/50 text-[10px] font-black uppercase tracking-widest mb-3">
                         Actividad

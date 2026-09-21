@@ -67,6 +67,9 @@ export interface Sesion {
     pesos: Record<string, number>;
     /** Repeticiones hechas en el bloque, indexado igual que `pesos`. */
     reps: Record<string, number>;
+    /** Carga liviana: `pesos` y `reps` son la carga pesada (los registros de antes cuentan como pesada). */
+    pesosLiv: Record<string, number>;
+    repsLiv: Record<string, number>;
     /** Epoch en milisegundos del último cambio hecho por la clienta. */
     actualizado: number;
 }
@@ -77,6 +80,8 @@ export interface SesionServidor {
     notas?: Record<string, string>;
     pesos?: Record<string, number>;
     reps?: Record<string, number>;
+    pesosLiv?: Record<string, number>;
+    repsLiv?: Record<string, number>;
     actualizadoCliente?: number;
 }
 
@@ -103,6 +108,9 @@ export interface RegistroConPesos {
     pesos?: Record<string, number>;
     /** Repeticiones hechas, con las mismas claves que `pesos`. */
     reps?: Record<string, number>;
+    /** Carga liviana, con las mismas claves. `pesos`/`reps` son la pesada. */
+    pesosLiv?: Record<string, number>;
+    repsLiv?: Record<string, number>;
     etiquetasPeso?: Record<string, string>;
     titulos?: string[];
     nombreDia?: string;
