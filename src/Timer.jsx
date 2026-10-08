@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const OPCIONES = [30, 60, 90];
+const OPCIONES = [60, 90, 180];
 
 export default function Timer() {
     // El efecto fija un instante final y resta contra él, en vez de ir bajando
