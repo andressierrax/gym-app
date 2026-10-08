@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
     SEMANAS,
     DIAS,
+    DIA_EXTRA,
+    DIAS_ASIGNABLES,
     SEMANA_ADAPTACION,
+    etiquetaDia,
     etiquetaSemana,
     etiquetaSemanaCorta,
     enfoqueDeSemana,
@@ -31,11 +34,24 @@ describe("forma del ciclo", () => {
         expect(esSemanaValida(5)).toBe(false);
         expect(esSemanaValida(-1)).toBe(false);
         expect(esDiaValido(0)).toBe(false);
-        expect(esDiaValido(6)).toBe(false);
+        expect(esDiaValido(7)).toBe(false);
     });
 
     it("los días no cambian", () => {
         expect(DIAS).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it("el día extra es asignable pero no forma parte de los días fijos", () => {
+        expect(DIAS).not.toContain(DIA_EXTRA);
+        expect(DIAS_ASIGNABLES).toEqual([...DIAS, DIA_EXTRA]);
+        expect(esDiaValido(DIA_EXTRA)).toBe(true);
+        expect(esDiaValido(String(DIA_EXTRA))).toBe(true);
+    });
+
+    it("etiqueta el día extra por su nombre y el resto por número", () => {
+        expect(etiquetaDia(DIA_EXTRA)).toBe("Día extra");
+        expect(etiquetaDia(3)).toBe("Día 3");
+        expect(etiquetaDia("2")).toBe("Día 2");
     });
 });
 

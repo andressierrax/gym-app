@@ -90,17 +90,17 @@ export default function Timer() {
     return (
         <div className="fixed top-20 right-3 z-40">
             {descanso ? (
-                <div className="bg-blue-600 text-white rounded-full pl-4 pr-3 py-1.5 flex items-center gap-2 shadow-lg animate-pulse">
-                    <span className="text-sm font-black">{restante}s</span>
-                    <button onClick={parar} className="text-[9px] font-bold uppercase bg-white/20 rounded-full px-2 py-1">Parar</button>
+                <div className="bg-blue-600 text-white rounded-full pl-5 pr-2 py-2 flex items-center gap-3 shadow-lg animate-pulse">
+                    <span className="text-3xl font-black tabular-nums">{restante}s</span>
+                    <button onClick={parar} className="text-xs font-bold uppercase bg-white/20 rounded-full px-3 py-2">Parar</button>
                 </div>
             ) : abierto ? (
-                <div className="bg-zinc-800/95 rounded-full p-1.5 flex items-center gap-1.5 shadow-lg">
+                <div className="bg-zinc-800/95 rounded-full p-2 flex items-center gap-2 shadow-lg">
                     {OPCIONES.map((t) => (
                         <button
                             key={t}
                             onClick={() => { iniciar(t); setAbierto(false); }}
-                            className="bg-zinc-700 text-white w-9 h-9 rounded-full font-bold text-[10px] active:bg-blue-600 transition-colors"
+                            className="bg-zinc-700 text-white w-14 h-14 rounded-full font-black text-base active:bg-blue-600 transition-colors"
                         >
                             {t}s
                         </button>
@@ -108,7 +108,7 @@ export default function Timer() {
                     <button
                         onClick={() => setAbierto(false)}
                         aria-label="Cerrar temporizador"
-                        className="text-white/60 w-7 h-9 text-sm font-black"
+                        className="text-white/60 w-9 h-14 text-lg font-black"
                     >
                         ✕
                     </button>
@@ -117,7 +117,7 @@ export default function Timer() {
                 <button
                     onClick={() => setAbierto(true)}
                     aria-label="Temporizador de descanso"
-                    className="bg-zinc-800/90 text-white w-10 h-10 rounded-full shadow-lg text-base active:scale-90 transition-transform"
+                    className="bg-zinc-800/90 text-white w-14 h-14 rounded-full shadow-lg text-2xl active:scale-90 transition-transform"
                 >
                     ⏱
                 </button>

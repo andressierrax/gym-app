@@ -6,7 +6,7 @@ import TarjetaCiclo from "./TarjetaCiclo";
 import { Cargando, Celebracion } from "./ui";
 import { idSesionCiclo } from "./dominio/sesion";
 import { mensajeDelDia, mensajeDeSemana, semanaCompletada } from "./dominio/mensajes";
-import { SEMANAS, DIAS, etiquetaSemanaCorta, enfoqueDeSemana, semanaAnterior } from "./constantes";
+import { SEMANAS, DIAS, DIA_EXTRA, etiquetaSemanaCorta, enfoqueDeSemana, semanaAnterior } from "./constantes";
 
 // Traduce el fallo de Firestore a algo accionable. `failed-precondition` es
 // casi siempre un índice compuesto sin desplegar, que en desarrollo funciona
@@ -101,6 +101,11 @@ export default function VistaCliente() {
         return () => { vivo = false; };
     }, [uid, semanaActual, diaActual]);
 
+    // El día extra es opcional: solo aparece a quien la entrenadora se lo ha
+    // asignado en alguna semana, así el resto no ve un botón siempre vacío.
+    const tieneDiaExtra = planes.some(p => p.dia === DIA_EXTRA);
+    const diasVisibles = tieneDiaExtra ? [...DIAS, DIA_EXTRA] : DIAS;
+
     const rutinaSeleccionada = planes.find(
         (p) => p.semana === parseInt(semanaActual) && p.dia === parseInt(diaActual)
     );
@@ -181,7 +186,7 @@ export default function VistaCliente() {
 
             {/* Selectores de Día */}
             <div className="flex justify-between gap-2 mb-8">
-                {DIAS.map((d) => (
+                {diasVisibles.map((d) => (
                     <button
                         key={d}
                         onClick={() => setDiaActual(d)}
@@ -190,7 +195,7 @@ export default function VistaCliente() {
                             : "bg-white/60 text-amatista-dark border-amatista-light"
                             }`}
                     >
-                        D{d}
+                        {d === DIA_EXTRA ? "EXTRA" : `D${d}`}
                     </button>
                 ))}
             </div>
@@ -199,7 +204,7 @@ export default function VistaCliente() {
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="mb-8">
                         <h2 className="text-amatista-dark font-black italic text-4xl uppercase leading-none tracking-tighter">
-                            {rutinaSeleccionada.nombreDia || `DÍA ${diaActual}`}
+                            {rutinaSeleccionada.nombreDia || (diaActual === DIA_EXTRA ? "DÍA EXTRA" : `DÍA ${diaActual}`)}
                         </h2>
                         <p className="text-amatista-dark/70 text-[10px] font-bold mt-2 uppercase tracking-[0.3em]">
                             {enfoqueDeSemana(semanaActual)}

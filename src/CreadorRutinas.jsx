@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, query, where, orderBy } from "firebase/firestore";
-import { SEMANAS, DIAS, SEMANA_ADAPTACION, etiquetaSemana, esSemanaValida, esDiaValido } from "./constantes";
+import { SEMANAS, DIAS, DIA_EXTRA, DIAS_ASIGNABLES, SEMANA_ADAPTACION, etiquetaSemana, etiquetaDia, esSemanaValida, esDiaValido } from "./constantes";
 import { TituloSeccion, Tarjeta, Campo, Entrada, Seleccion, BotonPrincipal } from "./ui";
 import { idPlan, clonarBloques, planesDelHueco, planesFueraDeCiclo, agruparPorCliente, BLOQUE_VACIO } from "./dominio/planes";
 import { esEsporadica } from "./dominio/clientes";
@@ -249,7 +249,7 @@ No se puede deshacer. ¿Continuar?`)) return;
         if (!esSemanaValida(semana) || !esDiaValido(dia)) {
             return alert(
                 `La clienta solo puede abrir estas semanas: ${SEMANAS.map(etiquetaSemana).join(", ")}. ` +
-                `Y los días ${DIAS[0]}-${DIAS.at(-1)}. Ajusta la asignación.`
+                `Y los días ${DIAS[0]}-${DIAS.at(-1)} más el día extra. Ajusta la asignación.`
             );
         }
         const id = idPlan(clienteSeleccionado, semana, dia);
@@ -258,9 +258,9 @@ No se puede deshacer. ¿Continuar?`)) return;
 
         if (planActual) {
             const aviso = heredados.length > 0
-                ? `Ya hay ${delHueco.length} plan(es) guardados para ${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · Día ${dia}.\n\n` +
+                ? `Ya hay ${delHueco.length} plan(es) guardados para ${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · ${etiquetaDia(dia)}.\n\n` +
                   `Se dejará uno solo con lo que tienes en pantalla y se eliminarán los ${heredados.length} duplicado(s).`
-                : `Ya existe un plan para ${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · Día ${dia}.\n\n` +
+                : `Ya existe un plan para ${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · ${etiquetaDia(dia)}.\n\n` +
                   `Se reemplazará por lo que tienes en pantalla.`;
             if (!window.confirm(aviso + "\n\n¿Continuar?")) return;
         }
@@ -298,7 +298,7 @@ No se puede deshacer. ¿Continuar?`)) return;
         const cuantos = delHueco.length;
         const confirmar = window.confirm(
             `Se eliminará ${cuantos > 1 ? `${cuantos} planes` : "el plan"} de ` +
-            `${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · Día ${dia}.\n\n` +
+            `${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · ${etiquetaDia(dia)}.\n\n` +
             `La clienta dejará de ver esta rutina. Esta acción no se puede deshacer.\n\n¿Continuar?`
         );
         if (!confirmar) return;
@@ -341,13 +341,13 @@ No se puede deshacer. ¿Continuar?`)) return;
                     </p>
                     <p className="text-amber-800/80 text-[11px] font-medium leading-snug mb-3">
                         Están guardados pero la clienta no puede verlos, porque solo abre
-                        estas semanas: {SEMANAS.map(etiquetaSemana).join(", ")}; y los días {DIAS[0]}-{DIAS.at(-1)}.
+                        estas semanas: {SEMANAS.map(etiquetaSemana).join(", ")}; y los días {DIAS[0]}-{DIAS.at(-1)} más el día extra.
                         Vuelve a asignarlos dentro del rango.
                     </p>
                     <ul className="space-y-1">
                         {planesInvisibles.map(p => (
                             <li key={p.id} className="text-amber-900 text-[11px] font-bold">
-                                • {p.nombreDia || "Sin nombre"} — {etiquetaSemana(p.semana)}, Día {p.dia}
+                                • {p.nombreDia || "Sin nombre"} — {etiquetaSemana(p.semana)}, {etiquetaDia(p.dia)}
                                 <span className="font-medium text-amber-800/70">
                                     {" "}({nombreCliente(p.clienteId)})
                                 </span>
@@ -373,7 +373,7 @@ No se puede deshacer. ¿Continuar?`)) return;
                         <optgroup key={grupo.clienteId} label={grupo.nombre}>
                             {grupo.planes.map(r => (
                                 <option key={r.id} value={r.id}>
-                                    {r.semana === SEMANA_ADAPTACION ? "ADAP" : `S${r.semana}`}·D{r.dia} — {r.nombreDia || "Sin nombre"} ({r.bloques?.length ?? 0} sets)
+                                    {r.semana === SEMANA_ADAPTACION ? "ADAP" : `S${r.semana}`}·{r.dia === DIA_EXTRA ? "EXTRA" : `D${r.dia}`} — {r.nombreDia || "Sin nombre"} ({r.bloques?.length ?? 0} sets)
                                 </option>
                             ))}
                         </optgroup>
@@ -464,7 +464,7 @@ No se puede deshacer. ¿Continuar?`)) return;
                             onChange={(e) => setDia(e.target.value)}
                             className="text-center"
                         >
-                            {DIAS.map(d => <option key={d} value={d}>Día {d}</option>)}
+                            {DIAS_ASIGNABLES.map(d => <option key={d} value={d}>{d === DIA_EXTRA ? "Día extra (opcional)" : etiquetaDia(d)}</option>)}
                         </Seleccion>
                     </Campo>
                 </div>

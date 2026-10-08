@@ -1,4 +1,4 @@
-import { etiquetaSemanaCorta } from "../constantes";
+import { etiquetaSemanaCorta, etiquetaDia } from "../constantes";
 
 /**
  * Cómo etiquetar un entrenamiento en el Monitor.
@@ -27,6 +27,6 @@ export function etiquetasDeRegistro(reg: {
     return {
         esporadica: false,
         principal: etiquetaSemanaCorta(reg.semana ?? 0),
-        secundario: `Día ${reg.dia ?? "?"}`,
+        secundario: reg.dia === undefined ? "Día ?" : etiquetaDia(reg.dia),
     };
 }

@@ -17,6 +17,11 @@ describe("etiquetasDeRegistro", () => {
         expect(e.secundario).toBe("Día 3");
     });
 
+    it("el día extra se muestra como tal, no como 'Día 6'", () => {
+        const e = etiquetasDeRegistro({ semana: 2, dia: 6 });
+        expect(e.secundario).toBe("Día extra");
+    });
+
     it("nunca muestra 'Sem 0' ni 'Día 0'", () => {
         for (const reg of [
             { semana: 0, dia: 1 },

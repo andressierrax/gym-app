@@ -18,6 +18,22 @@ export const SEMANA_ADAPTACION = 0;
 export const SEMANAS = [SEMANA_ADAPTACION, 1, 2, 3, 4];
 export const DIAS = [1, 2, 3, 4, 5];
 
+/**
+ * Día opcional para las clientas que entrenan una vez más por semana.
+ *
+ * Va aparte de DIAS a propósito: no cuenta para cerrar la semana (quien no lo
+ * tiene asignado nunca podría completarla) y la clienta solo ve su botón si la
+ * entrenadora le ha guardado un plan en él. El nombre visible ("Fullbody" u
+ * otro) lo pone la entrenadora en el Enfoque del Día.
+ */
+export const DIA_EXTRA = 6;
+
+/** Todos los días en los que la entrenadora puede guardar un plan. */
+export const DIAS_ASIGNABLES = [...DIAS, DIA_EXTRA];
+
+export const etiquetaDia = (dia: number | string): string =>
+    Number(dia) === DIA_EXTRA ? "Día extra" : `Día ${dia}`;
+
 /** Nombre completo, para el selector de la entrenadora. */
 export const etiquetaSemana = (semana: number): string =>
     semana === SEMANA_ADAPTACION ? "Semana Adaptación" : `Semana ${semana}`;
@@ -33,7 +49,7 @@ export const enfoqueDeSemana = (semana: number): string =>
         : "Fuerza e Hipertrofia";
 
 export const esSemanaValida = (semana: number | string): boolean => SEMANAS.includes(Number(semana));
-export const esDiaValido = (dia: number | string): boolean => DIAS.includes(Number(dia));
+export const esDiaValido = (dia: number | string): boolean => DIAS_ASIGNABLES.includes(Number(dia));
 
 /**
  * La semana justo antes, según el orden real del ciclo (no `semana - 1`):

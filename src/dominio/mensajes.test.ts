@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DIAS } from "../constantes";
+import { DIAS, DIA_EXTRA } from "../constantes";
 import {
     MENSAJES_DIA,
     MENSAJES_SEMANA,
@@ -64,6 +64,12 @@ describe("semanaCompletada", () => {
     it("ignora días fuera del ciclo", () => {
         expect(semanaCompletada([...DIAS, 99])).toBe(true);
         expect(semanaCompletada([99, 100])).toBe(false);
+    });
+
+    it("el día extra es opcional: ni hace falta ni basta para cerrar la semana", () => {
+        expect(semanaCompletada([...DIAS])).toBe(true);
+        expect(semanaCompletada([...DIAS, DIA_EXTRA])).toBe(true);
+        expect(semanaCompletada([...DIAS.slice(0, -1), DIA_EXTRA])).toBe(false);
     });
 
     it("es falsa sin registros", () => {
