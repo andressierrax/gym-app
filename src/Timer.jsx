@@ -87,20 +87,22 @@ export default function Timer() {
 
     // Arriba a la derecha y plegado por defecto: abajo tapaba las notas y el
     // botón de finalizar. `top-20` lo deja justo debajo del botón Salir.
+    // Rojo y grande para que se lea de un vistazo entre serie y serie; sin
+    // `animate-pulse`, que bajaba la opacidad a la mitad y costaba leerlo.
     return (
         <div className="fixed top-20 right-3 z-40">
             {descanso ? (
-                <div className="bg-blue-600 text-white rounded-full pl-5 pr-2 py-2 flex items-center gap-3 shadow-lg animate-pulse">
-                    <span className="text-3xl font-black tabular-nums">{restante}s</span>
-                    <button onClick={parar} className="text-xs font-bold uppercase bg-white/20 rounded-full px-3 py-2">Parar</button>
+                <div className="bg-red-600 text-white rounded-full pl-6 pr-2 py-2 flex items-center gap-3 shadow-xl ring-4 ring-red-300/60">
+                    <span className="text-5xl font-black tabular-nums leading-none">{restante}s</span>
+                    <button onClick={parar} className="text-sm font-black uppercase bg-white/25 rounded-full px-4 py-3">Parar</button>
                 </div>
             ) : abierto ? (
-                <div className="bg-zinc-800/95 rounded-full p-2 flex items-center gap-2 shadow-lg">
+                <div className="bg-zinc-800/95 rounded-full p-2 flex items-center gap-2 shadow-xl">
                     {OPCIONES.map((t) => (
                         <button
                             key={t}
                             onClick={() => { iniciar(t); setAbierto(false); }}
-                            className="bg-zinc-700 text-white w-14 h-14 rounded-full font-black text-base active:bg-blue-600 transition-colors"
+                            className="bg-red-600 text-white w-16 h-16 rounded-full font-black text-lg active:bg-red-800 transition-colors"
                         >
                             {t}s
                         </button>
@@ -108,7 +110,7 @@ export default function Timer() {
                     <button
                         onClick={() => setAbierto(false)}
                         aria-label="Cerrar temporizador"
-                        className="text-white/60 w-9 h-14 text-lg font-black"
+                        className="text-white/70 w-9 h-16 text-xl font-black"
                     >
                         ✕
                     </button>
@@ -117,7 +119,7 @@ export default function Timer() {
                 <button
                     onClick={() => setAbierto(true)}
                     aria-label="Temporizador de descanso"
-                    className="bg-zinc-800/90 text-white w-14 h-14 rounded-full shadow-lg text-2xl active:scale-90 transition-transform"
+                    className="bg-red-600 text-white w-16 h-16 rounded-full shadow-xl ring-4 ring-red-300/60 text-3xl active:scale-90 transition-transform"
                 >
                     ⏱
                 </button>
