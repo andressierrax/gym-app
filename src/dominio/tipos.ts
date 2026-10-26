@@ -55,6 +55,8 @@ export interface Plan {
     dia: number;
     nombreDia?: string;
     bloques?: Bloque[];
+    /** Sube al poner una rutina nueva en el hueco; ausente = 0. Ver idSesionCiclo. */
+    versionSesion?: number;
     fechaCreacion?: unknown;
     fechaActualizacion?: unknown;
 }
@@ -72,6 +74,14 @@ export interface Sesion {
     repsLiv: Record<string, number>;
     /** Epoch en milisegundos del último cambio hecho por la clienta. */
     actualizado: number;
+    /** A qué ejercicio corresponde cada posición al guardar. Ver huellas.ts. */
+    huellas?: Huellas;
+}
+
+/** Igual que HuellasRutina en huellas.ts; se repite aquí para no crear un ciclo de imports. */
+export interface Huellas {
+    filas?: Record<string, string>;
+    sets?: Record<string, string>;
 }
 
 /** Lo que se guarda en el documento de servidor de una sesión. */
@@ -82,6 +92,7 @@ export interface SesionServidor {
     reps?: Record<string, number>;
     pesosLiv?: Record<string, number>;
     repsLiv?: Record<string, number>;
+    huellas?: Huellas;
     actualizadoCliente?: number;
 }
 

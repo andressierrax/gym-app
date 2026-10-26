@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "./firebase";
-import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, getDoc, addDoc, setDoc, deleteDoc, doc, query, where, orderBy, serverTimestamp } from "firebase/firestore";
 import { SEMANAS, DIAS, DIA_EXTRA, DIAS_ASIGNABLES, SEMANA_ADAPTACION, etiquetaSemana, etiquetaDia, esSemanaValida, esDiaValido } from "./constantes";
 import { TituloSeccion, Tarjeta, Campo, Entrada, Seleccion, BotonPrincipal } from "./ui";
 import { idPlan, clonarBloques, planesDelHueco, planesFueraDeCiclo, agruparPorCliente, BLOQUE_VACIO } from "./dominio/planes";
 import { esEsporadica } from "./dominio/clientes";
 import { esVideo } from "./dominio/ejercicios";
+import { idSesionCiclo, debeArchivarse, contarCompletados } from "./dominio/sesion";
+import { etiquetasDeCarga } from "./dominio/huellas";
+import { aDate } from "./dominio/fechas";
+import HistorialVersiones from "./HistorialVersiones";
 
 
 export default function CreadorRutinas() {
@@ -21,6 +25,11 @@ export default function CreadorRutinas() {
     const [nombreRutina, setNombreRutina] = useState("");
     const [rutinasLibres, setRutinasLibres] = useState([]);
     const [rutinaLibreId, setRutinaLibreId] = useState(null);
+    // ¿Lo que se va a guardar encima de una rutina existente es una rutina
+    // NUEVA (la clienta empieza en limpio) o una corrección de la misma? Se
+    // recuerda por hueco: al cambiar de clienta, semana o día vuelve a su
+    // valor por defecto, que es "nueva" salvo si se pulsó "Cargar para editar".
+    const [eleccionNueva, setEleccionNueva] = useState({ hueco: "", nueva: true });
 
     // Función para LIMPIAR todo el formulario
     const limpiarFormulario = () => {
@@ -104,6 +113,48 @@ export default function CreadorRutinas() {
         return () => { vivo = false; };
     }, [leerRutinasLibres, clienteSeleccionado, modoCatalogo]);
 
+    // Versiones anteriores del hueco que hay en el formulario. Se piden por el
+    // id determinista del plan, así aparecen aunque la rutina se haya borrado.
+    const idHueco = clienteSeleccionado && !modoCatalogo ? idPlan(clienteSeleccionado, semana, dia) : "";
+    const [versiones, setVersiones] = useState([]);
+    const [recargaVersiones, setRecargaVersiones] = useState(0);
+
+    const leerVersiones = useCallback(async (planId) => {
+        if (!planId) return [];
+        try {
+            const snap = await getDocs(query(collection(db, "planes_historial"), where("planId", "==", planId)));
+            // Orden en el cliente: con orderBy haría falta un índice compuesto.
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => (aDate(b.guardadoEn)?.getTime() ?? 0) - (aDate(a.guardadoEn)?.getTime() ?? 0));
+        } catch (error) {
+            console.error("No se pudo cargar el historial:", error);
+            return [];
+        }
+    }, []);
+
+    useEffect(() => {
+        let vivo = true;
+        leerVersiones(idHueco).then(v => { if (vivo) setVersiones(v); });
+        return () => { vivo = false; };
+    }, [leerVersiones, idHueco, recargaVersiones]);
+
+    /** Copia al historial la rutina que está a punto de sobrescribirse o borrarse. */
+    const guardarEnHistorial = async (plan, motivo) => {
+        const { id: _id, ...datos } = plan;
+        await addDoc(collection(db, "planes_historial"), {
+            ...datos,
+            planId: idHueco,
+            motivo,
+            guardadoEn: serverTimestamp(),
+        });
+    };
+
+    const restaurarVersion = (v) => {
+        setNombreDia(v.nombreDia || "");
+        setBloques(clonarBloques(v.bloques));
+        alert("Versión cargada en el formulario. Revísala y pulsa Guardar para aplicarla.");
+    };
+
     const nuevaRutinaLibre = () => {
         setRutinaLibreId(null);
         setNombreRutina("");
@@ -171,6 +222,7 @@ No se puede deshacer. ¿Continuar?`)) return;
             // referencias, editar el formulario modificaría la rutina original
             // que sigue viva en `rutinasExistentes`.
             setBloques(clonarBloques(plantilla.bloques));
+            setEleccionNueva({ hueco, nueva: true });
         }
     };
 
@@ -185,10 +237,60 @@ No se puede deshacer. ¿Continuar?`)) return;
     const delHueco = planesDelHueco(rutinasExistentes, clienteSeleccionado, semana, dia);
     const planActual = delHueco[0]; // el más reciente: la consulta viene ordenada
 
+    const hueco = `${clienteSeleccionado}_${semana}_${dia}`;
+    const rutinaNueva = eleccionNueva.hueco === hueco ? eleccionNueva.nueva : true;
+
     const cargarParaEditar = () => {
         if (!planActual) return;
         setNombreDia(planActual.nombreDia || "");
         setBloques(clonarBloques(planActual.bloques));
+        setEleccionNueva({ hueco, nueva: false });
+    };
+
+    /**
+     * Antes de poner una rutina nueva encima, pasa al historial lo que la
+     * clienta anotó con la anterior y que aún no estaba en él (si no llegó a
+     * pulsar "Finalizar", o cambió algo después). Así aparece en su progreso y
+     * en el Monitor aunque la sesión deje de mostrarse.
+     */
+    const archivarSesionAnterior = async () => {
+        const s = parseInt(semana);
+        const d = parseInt(dia);
+        const idSesion = idSesionCiclo(clienteSeleccionado, s, d, planActual.versionSesion ?? 0);
+        const snap = await getDoc(doc(db, "sesiones", idSesion));
+        if (!snap.exists()) return;
+        const sesion = snap.data();
+
+        const registros = await getDocs(query(
+            collection(db, "registros_entrenamiento"),
+            where("clienteId", "==", clienteSeleccionado)
+        ));
+        const fechas = registros.docs
+            .map(r => r.data())
+            .filter(r => r.semana === s && r.dia === d)
+            .map(r => aDate(r.fecha)?.getTime() ?? 0);
+        if (!debeArchivarse(sesion, fechas)) return;
+
+        const bloquesViejos = planActual.bloques ?? [];
+        await addDoc(collection(db, "registros_entrenamiento"), {
+            clienteId: clienteSeleccionado,
+            clienteNombre: nombreCliente(clienteSeleccionado),
+            semana: s,
+            dia: d,
+            nombreDia: planActual.nombreDia ?? "",
+            completados: contarCompletados(sesion.checks ?? {}, bloquesViejos.length),
+            totalBloques: bloquesViejos.length,
+            notas: sesion.notas ?? {},
+            pesos: sesion.pesos ?? {},
+            reps: sesion.reps ?? {},
+            pesosLiv: sesion.pesosLiv ?? {},
+            repsLiv: sesion.repsLiv ?? {},
+            etiquetasPeso: etiquetasDeCarga(bloquesViejos),
+            titulos: bloquesViejos.map(b => b.titulo ?? ""),
+            // Cuándo entrenó de verdad, no cuándo se archivó.
+            fecha: sesion.actualizadoCliente ? new Date(sesion.actualizadoCliente) : serverTimestamp(),
+            archivadoAlReemplazar: true,
+        });
     };
 
     // Planes agrupados por clienta para el selector de copiar.
@@ -262,11 +364,23 @@ No se puede deshacer. ¿Continuar?`)) return;
                   `Se dejará uno solo con lo que tienes en pantalla y se eliminarán los ${heredados.length} duplicado(s).`
                 : `Ya existe un plan para ${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · ${etiquetaDia(dia)}.\n\n` +
                   `Se reemplazará por lo que tienes en pantalla.`;
-            if (!window.confirm(aviso + "\n\n¿Continuar?")) return;
+            const modo = rutinaNueva
+                ? "RUTINA NUEVA: la clienta empezará este día en limpio. Lo que ya anotó se guarda en su progreso."
+                : "CORRECCIÓN: la clienta conserva lo que ya anotó en este día.";
+            if (!window.confirm(aviso + "\n\n" + modo + "\n\n¿Continuar?")) return;
         }
+
+        const reemplazaConNueva = !!planActual && rutinaNueva;
+        const versionSesion = (planActual?.versionSesion ?? 0) + (reemplazaConNueva ? 1 : 0);
 
         setCargando(true);
         try {
+            // Primero el historial: si esto falla no se toca la rutina, así
+            // nada de lo que anotó la clienta queda colgando.
+            if (reemplazaConNueva) await archivarSesionAnterior();
+            // Y la rutina que había, para poder verla o recuperarla después.
+            if (planActual) await guardarEnHistorial(planActual, rutinaNueva ? "nueva" : "correccion");
+
             // setDoc sin merge: sobrescribe el documento entero, así los bloques
             // que hayas eliminado desaparecen de verdad.
             await setDoc(doc(db, "planes_mensuales", id), {
@@ -275,6 +389,7 @@ No se puede deshacer. ¿Continuar?`)) return;
                 dia: parseInt(dia),
                 nombreDia,
                 bloques,
+                versionSesion,
                 // Conservamos la fecha original para no alterar el orden del histórico.
                 fechaCreacion: planActual?.fechaCreacion ?? new Date(),
                 fechaActualizacion: new Date()
@@ -285,6 +400,7 @@ No se puede deshacer. ¿Continuar?`)) return;
             }
 
             await fetchRutinas();
+            setRecargaVersiones(n => n + 1);
             alert(planActual ? "¡Rutina actualizada!" : "¡Rutina guardada!");
         } catch (error) {
             console.error("Error al guardar el plan:", error);
@@ -299,16 +415,18 @@ No se puede deshacer. ¿Continuar?`)) return;
         const confirmar = window.confirm(
             `Se eliminará ${cuantos > 1 ? `${cuantos} planes` : "el plan"} de ` +
             `${nombreCliente(clienteSeleccionado)} en ${etiquetaSemana(Number(semana))} · ${etiquetaDia(dia)}.\n\n` +
-            `La clienta dejará de ver esta rutina. Esta acción no se puede deshacer.\n\n¿Continuar?`
+            `La clienta dejará de ver esta rutina. Quedará en "Versiones anteriores" por si quieres recuperarla.\n\n¿Continuar?`
         );
         if (!confirmar) return;
 
         setCargando(true);
         try {
+            await guardarEnHistorial(planActual, "eliminada");
             for (const p of delHueco) {
                 await deleteDoc(doc(db, "planes_mensuales", p.id));
             }
             await fetchRutinas();
+            setRecargaVersiones(n => n + 1);
             alert("Rutina eliminada 🗑️");
         } catch (error) {
             console.error("Error al eliminar el plan:", error);
@@ -499,7 +617,36 @@ No se puede deshacer. ¿Continuar?`)) return;
                                 Eliminar rutina 🗑️
                             </button>
                         </div>
+
+                        {/* Sin esto, una rutina nueva encima de la vieja dejaba a
+                            la clienta con los pesos de otros ejercicios, y al
+                            anotar los nuevos se perdían los anteriores. */}
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                            {[
+                                { nueva: true, titulo: "Rutina nueva", detalle: "Empieza en limpio; lo anotado pasa a su progreso" },
+                                { nueva: false, titulo: "Corrección", detalle: "Conserva lo que ya anotó" },
+                            ].map(op => (
+                                <button
+                                    key={op.titulo}
+                                    type="button"
+                                    onClick={() => setEleccionNueva({ hueco, nueva: op.nueva })}
+                                    className={`text-left p-3 rounded-xl border transition-all ${rutinaNueva === op.nueva
+                                        ? "bg-amber-300 border-amber-300 text-amatista-dark"
+                                        : "bg-transparent border-white/20 text-white/70"
+                                        }`}
+                                >
+                                    <span className="block text-[9px] font-black uppercase tracking-widest">
+                                        {rutinaNueva === op.nueva ? "● " : "○ "}{op.titulo}
+                                    </span>
+                                    <span className="block text-[10px] font-medium leading-snug mt-1">{op.detalle}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
+                )}
+
+                {!modoCatalogo && (
+                    <HistorialVersiones versiones={versiones} onRestaurar={restaurarVersion} />
                 )}
 
                 {/* ENFOQUE */}

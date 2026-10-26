@@ -5,6 +5,7 @@ import SesionEntrenamiento from "./SesionEntrenamiento";
 import TarjetaCiclo from "./TarjetaCiclo";
 import { Cargando, Celebracion } from "./ui";
 import { idSesionCiclo } from "./dominio/sesion";
+import { huellasDeRutina, realinearSesion } from "./dominio/huellas";
 import { mensajeDelDia, mensajeDeSemana, semanaCompletada } from "./dominio/mensajes";
 import { SEMANAS, DIAS, DIA_EXTRA, etiquetaSemanaCorta, enfoqueDeSemana, semanaAnterior } from "./constantes";
 
@@ -33,9 +34,8 @@ export default function VistaCliente() {
     const [loading, setLoading] = useState(true);
     const [errorCarga, setErrorCarga] = useState("");
     const [celebracion, setCelebracion] = useState(null);
-    const [notasSemanaAnterior, setNotasSemanaAnterior] = useState({});
-    const [pesosSemanaAnterior, setPesosSemanaAnterior] = useState({});
-    const [pesosLivSemanaAnterior, setPesosLivSemanaAnterior] = useState({});
+    // Sesión del mismo día la semana anterior, tal cual vino del servidor.
+    const [sesionAnterior, setSesionAnterior] = useState(null);
 
     const uid = auth.currentUser?.uid;
 
@@ -81,25 +81,23 @@ export default function VistaCliente() {
     // semana justo anterior, para que sepa qué peso intentar superar. Falla
     // en silencio (la Adaptación no tiene semana previa, o puede que nunca
     // haya entrenado ese día) porque es un recordatorio, no algo bloqueante.
+    const anterior = semanaAnterior(semanaActual);
+    const planAnterior = planes.find(p => p.semana === anterior && p.dia === parseInt(diaActual));
+    // La sesión de la semana pasada vive en el documento de la versión de la
+    // rutina que tenía entonces ese hueco.
+    const versionAnterior = planAnterior?.versionSesion ?? 0;
+
     useEffect(() => {
         let vivo = true;
-        const anterior = semanaAnterior(semanaActual);
         if (anterior === null || !uid) {
-            setNotasSemanaAnterior({});
-            setPesosSemanaAnterior({});
-            setPesosLivSemanaAnterior({});
+            setSesionAnterior(null);
             return;
         }
-        getDoc(doc(db, "sesiones", idSesionCiclo(uid, anterior, diaActual)))
-            .then((snap) => {
-                if (!vivo) return;
-                setNotasSemanaAnterior(snap.exists() ? (snap.data().notas ?? {}) : {});
-                setPesosSemanaAnterior(snap.exists() ? (snap.data().pesos ?? {}) : {});
-                setPesosLivSemanaAnterior(snap.exists() ? (snap.data().pesosLiv ?? {}) : {});
-            })
-            .catch(() => { if (vivo) { setNotasSemanaAnterior({}); setPesosSemanaAnterior({}); setPesosLivSemanaAnterior({}); } });
+        getDoc(doc(db, "sesiones", idSesionCiclo(uid, anterior, diaActual, versionAnterior)))
+            .then((snap) => { if (vivo) setSesionAnterior(snap.exists() ? snap.data() : null); })
+            .catch(() => { if (vivo) setSesionAnterior(null); });
         return () => { vivo = false; };
-    }, [uid, semanaActual, diaActual]);
+    }, [uid, anterior, diaActual, versionAnterior]);
 
     // El día extra es opcional: solo aparece a quien la entrenadora se lo ha
     // asignado en alguna semana, así el resto no ve un botón siempre vacío.
@@ -108,6 +106,27 @@ export default function VistaCliente() {
 
     const rutinaSeleccionada = planes.find(
         (p) => p.semana === parseInt(semanaActual) && p.dia === parseInt(diaActual)
+    );
+    const idSesion = idSesionCiclo(uid, semanaActual, diaActual, rutinaSeleccionada?.versionSesion ?? 0);
+
+    // El "Antes: X kg" se busca por ejercicio, no por posición: si esta semana
+    // la entrenadora cambió el orden o puso otro ejercicio en ese lugar, no se
+    // muestra el peso de uno en el campo de otro. Sin recolocar por posición:
+    // aquí es mejor no mostrar nada que mostrar el peso de otro ejercicio.
+    // Las sesiones guardadas antes de este cambio no traen huellas; para ellas
+    // se usan las de la rutina de la semana pasada.
+    const anteriorAlineada = realinearSesion(
+        {
+            checks: {},
+            notas: sesionAnterior?.notas ?? {},
+            pesos: sesionAnterior?.pesos ?? {},
+            reps: {},
+            pesosLiv: sesionAnterior?.pesosLiv ?? {},
+            repsLiv: {},
+        },
+        sesionAnterior?.huellas ?? (planAnterior ? huellasDeRutina(planAnterior.bloques) : undefined),
+        huellasDeRutina(rutinaSeleccionada?.bloques),
+        false,
     );
 
     const finalizar = async ({ completados, totalBloques, notas, pesos, reps, pesosLiv, repsLiv, etiquetasPeso, titulos }) => {
@@ -212,13 +231,13 @@ export default function VistaCliente() {
                     </div>
 
                     <SesionEntrenamiento
-                        key={idSesionCiclo(uid, semanaActual, diaActual)}
-                        idSesion={idSesionCiclo(uid, semanaActual, diaActual)}
+                        key={idSesion}
+                        idSesion={idSesion}
                         bloques={rutinaSeleccionada.bloques ?? []}
                         onFinalizar={finalizar}
-                        notasSemanaAnterior={notasSemanaAnterior}
-                        pesosSemanaAnterior={pesosSemanaAnterior}
-                        pesosLivSemanaAnterior={pesosLivSemanaAnterior}
+                        notasSemanaAnterior={anteriorAlineada.notas}
+                        pesosSemanaAnterior={anteriorAlineada.pesos}
+                        pesosLivSemanaAnterior={anteriorAlineada.pesosLiv}
                     />
                 </div>
             ) : errorCarga ? (

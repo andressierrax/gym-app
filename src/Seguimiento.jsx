@@ -259,6 +259,14 @@ export default function Seguimiento() {
                                                 {etiquetas.secundario}
                                             </span>
                                         )}
+                                        {reg.archivadoAlReemplazar && (
+                                            <span
+                                                title="Lo anotado se pasó al historial al poner una rutina nueva en este día"
+                                                className="text-[9px] font-black text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg uppercase tracking-tighter"
+                                            >
+                                                Rutina reemplazada
+                                            </span>
+                                        )}
                                         {fase && (
                                             <span
                                                 title={`${fase.etiqueta} · día ${fase.dia} del ciclo`}

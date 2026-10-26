@@ -9,6 +9,7 @@ import {
     guardarLocal,
     servidorEsMasReciente,
     contarCompletados,
+    debeArchivarse,
 } from "./sesion";
 
 /** Almacén de mentira: evita depender de un navegador para probar esto. */
@@ -144,5 +145,38 @@ describe("fechaISOLocal", () => {
 
     it("rellena mes y día con cero", () => {
         expect(fechaISOLocal(new Date(2026, 0, 5))).toBe("2026-01-05");
+    });
+});
+
+describe("versión de la sesión", () => {
+    it("sin versión el id es el de siempre: las sesiones guardadas siguen valiendo", () => {
+        expect(idSesionCiclo("ana", 1, 2)).toBe("ana_S1D2");
+        expect(idSesionCiclo("ana", 1, 2, 0)).toBe("ana_S1D2");
+    });
+
+    it("una rutina nueva en el mismo hueco abre otro documento", () => {
+        expect(idSesionCiclo("ana", 1, 2, 1)).toBe("ana_S1D2_v1");
+        expect(idSesionCiclo("ana", 1, 2, 2)).not.toBe(idSesionCiclo("ana", 1, 2, 1));
+    });
+});
+
+describe("debeArchivarse", () => {
+    const conPeso = { pesos: { "0": 40 }, actualizadoCliente: 1000 };
+
+    it("no archiva una sesión vacía", () => {
+        expect(debeArchivarse(undefined, [])).toBe(false);
+        expect(debeArchivarse({ checks: { 0: false }, notas: { 0: "" } }, [])).toBe(false);
+    });
+
+    it("archiva lo anotado si nunca se pulsó Finalizar", () => {
+        expect(debeArchivarse(conPeso, [])).toBe(true);
+    });
+
+    it("no lo duplica si ya se finalizó después del último cambio", () => {
+        expect(debeArchivarse(conPeso, [1500])).toBe(false);
+    });
+
+    it("sí archiva si cambió algo después de finalizar", () => {
+        expect(debeArchivarse(conPeso, [500])).toBe(true);
     });
 });

@@ -5,7 +5,8 @@ import Timer from "./Timer";
 import { leerLocal, guardarLocal, servidorEsMasReciente, contarCompletados } from "./dominio/sesion";
 import { formatearPrescripcion } from "./dominio/planes";
 import { esVideo } from "./dominio/ejercicios";
-import { dividirBloque, etiquetaDePunto } from "./dominio/bloques";
+import { dividirBloque } from "./dominio/bloques";
+import { huellasDeRutina, realinearSesion, etiquetasDeCarga } from "./dominio/huellas";
 
 // Reemplaza la imagen o el vídeo roto por un aviso, en vez de dejar el hueco
 // del icono roto del navegador. Vive fuera del componente porque no depende
@@ -79,13 +80,25 @@ function FilaCarga({ etiqueta, kg, rep, antes, onKg, onRep, onBlur }) {
  * eligen la rutina, no en cómo la entrenan.
  */
 export default function SesionEntrenamiento({ idSesion, bloques = [], onFinalizar, textoFinalizar = "Finalizar Entrenamiento", notasSemanaAnterior = {}, pesosSemanaAnterior = {}, pesosLivSemanaAnterior = {} }) {
+    // A qué ejercicio corresponde cada posición en la rutina de hoy. Si la
+    // entrenadora la reordenó o editó, lo guardado se recoloca con esto en el
+    // ejercicio que le toca en vez de quedarse en su posición antigua.
+    const huellas = huellasDeRutina(bloques);
+    // La carga del servidor depende del contenido, no de la referencia: el
+    // padre puede pasar un `[]` nuevo en cada render y eso la relanzaría.
+    const firmaHuellas = JSON.stringify(huellas);
+
     // Estado inicial perezoso desde el móvil: instantáneo y sin esperar a la red.
     // El padre pasa key={idSesion}, así que al cambiar de día o de rutina React
     // remonta el componente y esto se vuelve a evaluar con la sesión correcta.
-    const [checks, setChecks] = useState(() => leerLocal(idSesion).checks);
-    const [notas, setNotas] = useState(() => leerLocal(idSesion).notas);
+    const [inicial] = useState(() => {
+        const local = leerLocal(idSesion);
+        return realinearSesion(local, local.huellas, huellasDeRutina(bloques));
+    });
+    const [checks, setChecks] = useState(inicial.checks);
+    const [notas, setNotas] = useState(inicial.notas);
     const [medidas, setMedidas] = useState(() => {
-        const { pesos, reps, pesosLiv, repsLiv } = leerLocal(idSesion);
+        const { pesos, reps, pesosLiv, repsLiv } = inicial;
         return { pesos, reps, pesosLiv, repsLiv };
     });
     const [estadoGuardado, setEstadoGuardado] = useState("");
@@ -108,22 +121,26 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                 // Solo pisamos lo local si el servidor es más reciente: evita que
                 // una copia cacheada borre lo apuntado estando sin señal.
                 if (!servidorEsMasReciente(datos, local)) return;
-                setChecks(datos.checks ?? {});
-                setNotas(datos.notas ?? {});
-                setMedidas({
+                const s = realinearSesion({
+                    checks: datos.checks ?? {},
+                    notas: datos.notas ?? {},
                     pesos: datos.pesos ?? {},
                     reps: datos.reps ?? {},
                     pesosLiv: datos.pesosLiv ?? {},
                     repsLiv: datos.repsLiv ?? {},
-                });
+                }, datos.huellas, JSON.parse(firmaHuellas));
+                setChecks(s.checks);
+                setNotas(s.notas);
+                setMedidas({ pesos: s.pesos, reps: s.reps, pesosLiv: s.pesosLiv, repsLiv: s.repsLiv });
             })
             .catch((error) => console.error("No se pudo cargar la sesión:", error));
 
         return () => { cancelado = true; };
-    }, [uid, idSesion]);
+    }, [uid, idSesion, firmaHuellas]);
 
-    // Lo que se guarda: todo el estado de la sesión en un solo objeto.
-    const actual = { checks, notas, ...medidas };
+    // Lo que se guarda: todo el estado de la sesión en un solo objeto, con las
+    // huellas de hoy para poder recolocarlo si la rutina cambia después.
+    const actual = { checks, notas, ...medidas, huellas };
 
     // Copia en el móvil en CADA pulsación: una recarga a media frase no pierde nada.
     const guardarEnMovil = useCallback((datos) => guardarLocal(idSesion, datos), [idSesion]);
@@ -187,15 +204,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
 
         // Etiqueta de cada clave de `pesos`, para que el progreso pueda
         // mostrar "Banca declinada con barra" en vez de solo "SET #1".
-        const etiquetasPeso = {};
-        bloques.forEach((bloque, i) => {
-            const { puntos } = dividirBloque(bloque.contenido);
-            if (puntos.length > 0) {
-                puntos.forEach((punto, j) => { etiquetasPeso[`${i}-${j}`] = etiquetaDePunto(punto); });
-            } else {
-                etiquetasPeso[`${i}`] = bloque.titulo || `Set ${i + 1}`;
-            }
-        });
+        const etiquetasPeso = etiquetasDeCarga(bloques);
 
         onFinalizar?.({
             completados: completadosCount,

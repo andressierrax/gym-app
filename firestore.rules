@@ -43,6 +43,14 @@ service cloud.firestore {
       allow write: if esEntrenadora();
     }
 
+    // --- HISTORIAL DE RUTINAS ---
+    // Copia de cada rutina antes de sobrescribirla o borrarla, para que la
+    // entrenadora pueda verla o recuperarla. Las clientas no lo ven.
+    match /planes_historial/{versionId} {
+      allow read, create, delete: if esEntrenadora();
+      allow update: if false;
+    }
+
     // --- CATÁLOGO DE RUTINAS (clientas esporádicas) ---
     // Rutinas con nombre y sin calendario: la clienta elige cuál hace el día
     // que aparece. Mismo criterio de lectura que los planes del ciclo.
@@ -93,7 +101,10 @@ service cloud.firestore {
     // La clienta solo puede crear registros a su propio nombre y no puede
     // alterarlos después; la entrenadora los lee todos en el Monitor.
     match /registros_entrenamiento/{registroId} {
-      allow create: if esDuena(request.resource.data.clienteId)
+      // La entrenadora también crea: al poner una rutina nueva encima de otra,
+      // pasa aquí lo que la clienta había anotado y no estaba aún en el
+      // historial (CreadorRutinas.jsx, archivarSesionAnterior).
+      allow create: if (esDuena(request.resource.data.clienteId) || esEntrenadora())
         && request.resource.data.semana is int
         && request.resource.data.dia is int
         && request.resource.data.completados is int
