@@ -285,7 +285,8 @@ No se puede deshacer. ¿Continuar?`)) return;
             reps: sesion.reps ?? {},
             pesosLiv: sesion.pesosLiv ?? {},
             repsLiv: sesion.repsLiv ?? {},
-            etiquetasPeso: etiquetasDeCarga(bloquesViejos),
+            // Sin huellas, la sesión se guardó con la regla vieja de numerales.
+            etiquetasPeso: etiquetasDeCarga(bloquesViejos, !sesion.huellas),
             titulos: bloquesViejos.map(b => b.titulo ?? ""),
             // Cuándo entrenó de verdad, no cuándo se archivó.
             fecha: sesion.actualizadoCliente ? new Date(sesion.actualizadoCliente) : serverTimestamp(),

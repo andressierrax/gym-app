@@ -3,6 +3,8 @@ import { db, auth } from "./firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import GraficoProgreso from "./GraficoProgreso";
 import TarjetaResumen from "./TarjetaResumen";
+import Mesociclos from "./Mesociclos";
+import { aDate } from "./dominio/fechas";
 import { resumirRegistros } from "./dominio/resumen";
 import { Cargando, Vacio, TituloSeccion } from "./ui";
 import { pesosPorEjercicio, repsPorEjercicio, pesosLivPorEjercicio, repsLivPorEjercicio } from "./dominio/progreso";
@@ -59,6 +61,11 @@ export default function MiProgreso() {
             <TituloSeccion titulo="Mi Progreso" subtitulo="Peso y repeticiones por set" />
 
             <TarjetaResumen resumen={resumirRegistros(registros)} paraClienta />
+
+            <Mesociclos
+                clienteId={auth.currentUser?.uid}
+                fechasEntrenos={registros.map(r => aDate(r.fecha)).filter(Boolean)}
+            />
 
             {graficosPeso.length === 0 && graficosReps.length === 0 ? (
                 <Vacio>

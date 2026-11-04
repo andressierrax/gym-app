@@ -7,8 +7,18 @@
  * introduzca en campos separados.
  */
 
-/** "1. ", "2) "... al principio de una línea. */
-const PATRON_NUMERAL = /^\s*\d+[.)]\s+/;
+/**
+ * "1. ", "2) "... al principio de una línea. También "3.Abductores", sin
+ * espacio: la entrenadora a veces lo escribe así y antes esos ejercicios se
+ * pegaban al anterior y compartían un solo campo de peso. Detrás tiene que
+ * venir un espacio o una letra, para no confundirlo con "2.5 kg" o "1.30 min".
+ */
+const PATRON_NUMERAL = /^\s*\d+[.)](?:\s+|(?=\p{L}))/u;
+const CORTE_NUMERAL = /(?=^\s*\d+[.)](?:\s|\p{L}))/mu;
+
+/** La regla de antes (exigía espacio). Solo para leer sesiones guardadas con ella. */
+const PATRON_NUMERAL_LEGADO = /^\s*\d+[.)]\s+/;
+const CORTE_NUMERAL_LEGADO = /(?=^\s*\d+[.)]\s)/m;
 
 export interface BloqueDividido {
     /** Texto suelto antes del primer numeral (instrucciones generales, o todo si no hay numerales). */
@@ -22,12 +32,14 @@ export interface BloqueDividido {
  * hasta el siguiente. Con menos de dos numerales no vale la pena partir la
  * vista en items sueltos: se devuelve todo como `preambulo`, igual que antes.
  */
-export function dividirBloque(contenido?: string): BloqueDividido {
+export function dividirBloque(contenido?: string, legado = false): BloqueDividido {
     const texto = contenido?.trim() ?? "";
     if (!texto) return { preambulo: "", puntos: [] };
 
-    const trozos = texto.split(/(?=^\s*\d+[.)]\s)/m).map(t => t.trim()).filter(Boolean);
-    const preambulo = trozos[0] && !PATRON_NUMERAL.test(trozos[0]) ? (trozos.shift() ?? "") : "";
+    const corte = legado ? CORTE_NUMERAL_LEGADO : CORTE_NUMERAL;
+    const patron = legado ? PATRON_NUMERAL_LEGADO : PATRON_NUMERAL;
+    const trozos = texto.split(corte).map(t => t.trim()).filter(Boolean);
+    const preambulo = trozos[0] && !patron.test(trozos[0]) ? (trozos.shift() ?? "") : "";
 
     return trozos.length >= 2 ? { preambulo, puntos: trozos } : { preambulo: texto, puntos: [] };
 }

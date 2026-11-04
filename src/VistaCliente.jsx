@@ -3,6 +3,7 @@ import { db, auth } from "./firebase";
 import { collection, query, where, getDocs, orderBy, addDoc, doc, getDoc } from "firebase/firestore";
 import SesionEntrenamiento from "./SesionEntrenamiento";
 import TarjetaCiclo from "./TarjetaCiclo";
+import MesocicloActual from "./MesocicloActual";
 import { Cargando, Celebracion } from "./ui";
 import { idSesionCiclo } from "./dominio/sesion";
 import { huellasDeRutina, realinearSesion } from "./dominio/huellas";
@@ -124,7 +125,7 @@ export default function VistaCliente() {
             pesosLiv: sesionAnterior?.pesosLiv ?? {},
             repsLiv: {},
         },
-        sesionAnterior?.huellas ?? (planAnterior ? huellasDeRutina(planAnterior.bloques) : undefined),
+        sesionAnterior?.huellas ?? (planAnterior ? huellasDeRutina(planAnterior.bloques, true) : undefined),
         huellasDeRutina(rutinaSeleccionada?.bloques),
         false,
     );
@@ -185,6 +186,7 @@ export default function VistaCliente() {
 
     return (
         <div className="text-amatista-dark pb-40">
+            <MesocicloActual clienteId={uid} />
             <TarjetaCiclo />
 
             {/* Selectores de Semana */}

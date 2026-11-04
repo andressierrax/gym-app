@@ -3,12 +3,14 @@ import { db } from "./firebase";
 import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Seleccion, TituloSeccion, Cargando, Vacio } from "./ui";
 import { tipoDeCliente, etiquetaTipo } from "./dominio/clientes";
+import Mesociclos from "./Mesociclos";
 
 /** Listado de clientas ya registradas, con su tipo de entrenamiento y el interruptor de ciclo. Crear una nueva vive en CrearCliente.jsx. */
 export default function Clientas() {
     const [clientas, setClientas] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [guardandoCiclo, setGuardandoCiclo] = useState("");
+    const [conMesociclos, setConMesociclos] = useState(null);
 
     const leerClientas = useCallback(async () => {
         try {
@@ -108,6 +110,19 @@ export default function Clientas() {
                                     <span className="w-5 h-5 rounded-full bg-white shadow" />
                                 </span>
                             </button>
+
+                            <button
+                                onClick={() => setConMesociclos(conMesociclos === c.id ? null : c.id)}
+                                className="w-full mt-2 flex items-center justify-between px-4 py-2.5 rounded-2xl border bg-purple-50 border-amatista-light/30 active:scale-[0.98] transition-all"
+                            >
+                                <span className="text-[10px] font-black uppercase tracking-widest text-amatista-dark">📅 Mesociclos y fechas</span>
+                                <span className={`text-amatista-dark transition-transform ${conMesociclos === c.id ? "rotate-180" : ""}`}>▾</span>
+                            </button>
+                            {conMesociclos === c.id && (
+                                <div className="mt-3">
+                                    <Mesociclos clienteId={c.id} editable />
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

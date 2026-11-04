@@ -66,3 +66,33 @@ describe("etiquetaDePunto", () => {
         expect(etiquetaDePunto("2) Tríceps fondos")).toBe("Tríceps fondos");
     });
 });
+
+describe("numerales sin espacio tras el punto", () => {
+    // Caso real: "3.Abductores" y "4.Maquina" se pegaban al "2." y los tres
+    // compartían un solo campo de peso.
+    const SET = [
+        "1. Hip thrust",
+        "Tiempo de descanso: 1:30 MIN",
+        "2. Abdomen en silla de capitan",
+        "3.Abductores jalón de lado",
+        "12 repeticiones sostener 10 segundos al final",
+        "4.Maquina sentada cerrando",
+        "5. Sentadilla dinamica",
+    ].join("\n");
+
+    it("separa cada numeral aunque no lleve espacio", () => {
+        const { puntos } = dividirBloque(SET);
+        expect(puntos).toHaveLength(5);
+        expect(etiquetaDePunto(puntos[2]!)).toBe("Abductores jalón de lado");
+        expect(etiquetaDePunto(puntos[3]!)).toBe("Maquina sentada cerrando");
+    });
+
+    it("no confunde cifras con decimales con un numeral", () => {
+        const { puntos } = dividirBloque("1. Sentadilla\n2.5 kg por lado\n2. Zancada");
+        expect(puntos).toHaveLength(2);
+    });
+
+    it("la regla vieja sigue disponible para leer sesiones guardadas con ella", () => {
+        expect(dividirBloque(SET, true).puntos).toHaveLength(3);
+    });
+});

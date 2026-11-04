@@ -87,13 +87,15 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
     // La carga del servidor depende del contenido, no de la referencia: el
     // padre puede pasar un `[]` nuevo en cada render y eso la relanzaría.
     const firmaHuellas = JSON.stringify(huellas);
+    // Las que se suponen a una sesión guardada sin huellas (ver huellasDeRutina).
+    const firmaLegado = JSON.stringify(huellasDeRutina(bloques, true));
 
     // Estado inicial perezoso desde el móvil: instantáneo y sin esperar a la red.
     // El padre pasa key={idSesion}, así que al cambiar de día o de rutina React
     // remonta el componente y esto se vuelve a evaluar con la sesión correcta.
     const [inicial] = useState(() => {
         const local = leerLocal(idSesion);
-        return realinearSesion(local, local.huellas, huellasDeRutina(bloques));
+        return realinearSesion(local, local.huellas ?? huellasDeRutina(bloques, true), huellasDeRutina(bloques));
     });
     const [checks, setChecks] = useState(inicial.checks);
     const [notas, setNotas] = useState(inicial.notas);
@@ -128,7 +130,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
                     reps: datos.reps ?? {},
                     pesosLiv: datos.pesosLiv ?? {},
                     repsLiv: datos.repsLiv ?? {},
-                }, datos.huellas, JSON.parse(firmaHuellas));
+                }, datos.huellas ?? JSON.parse(firmaLegado), JSON.parse(firmaHuellas));
                 setChecks(s.checks);
                 setNotas(s.notas);
                 setMedidas({ pesos: s.pesos, reps: s.reps, pesosLiv: s.pesosLiv, repsLiv: s.repsLiv });
@@ -136,7 +138,7 @@ export default function SesionEntrenamiento({ idSesion, bloques = [], onFinaliza
             .catch((error) => console.error("No se pudo cargar la sesión:", error));
 
         return () => { cancelado = true; };
-    }, [uid, idSesion, firmaHuellas]);
+    }, [uid, idSesion, firmaHuellas, firmaLegado]);
 
     // Lo que se guarda: todo el estado de la sesión en un solo objeto, con las
     // huellas de hoy para poder recolocarlo si la rutina cambia después.

@@ -73,3 +73,13 @@ describe("etiquetasDeCarga", () => {
             .toEqual({ "0-0": "Sentadilla 4x12", "0-1": "Hip thrust", "1": "SET #2" });
     });
 });
+
+describe("sesiones guardadas con la regla vieja de numerales", () => {
+    it("al separar '3.Abductores', los pesos de después vuelven a su ejercicio", () => {
+        const rutina = [{ titulo: "SET #1", contenido: "1. Hip thrust\n2. Abdomen\n3.Abductores\n4.Maquina\n5. Sentadilla" }];
+        // Con la regla vieja: 0-0 hip thrust, 0-1 abdomen (+3 y 4 pegados), 0-2 sentadilla.
+        const viejas = huellasDeRutina(rutina, true);
+        const r = realinear({ "0-0": 60, "0-1": 12, "0-2": 20 }, viejas.filas, huellasDeRutina(rutina).filas);
+        expect(r).toEqual({ "0-0": 60, "0-1": 12, "0-4": 20 });
+    });
+});

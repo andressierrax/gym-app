@@ -7,6 +7,7 @@ import { estadoDelCiclo } from "./dominio/ciclo";
 import { etiquetasDeRegistro } from "./dominio/registros";
 import TablaProgreso from "./TablaProgreso";
 import TarjetaResumen from "./TarjetaResumen";
+import Mesociclos from "./Mesociclos";
 import { resumirRegistros, alertasDe, DIAS_SIN_ENTRENAR_ALERTA } from "./dominio/resumen";
 
 export default function Seguimiento() {
@@ -196,6 +197,13 @@ export default function Seguimiento() {
                     </button>
 
                     <TarjetaResumen resumen={resumirRegistros(historialClienta)} />
+
+                    <Mesociclos
+                        key={historialClienta[0]?.clienteId}
+                        clienteId={historialClienta[0]?.clienteId}
+                        editable
+                        fechasEntrenos={historialClienta.map(r => aDate(r.fecha)).filter(Boolean)}
+                    />
 
                     {(() => {
                         const resumen = resumirRegistros(historialClienta);

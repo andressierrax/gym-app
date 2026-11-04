@@ -43,6 +43,14 @@ service cloud.firestore {
       allow write: if esEntrenadora();
     }
 
+    // --- MESOCICLOS ---
+    // Fechas de inicio y fin de cada mesociclo de una clienta. La entrenadora
+    // los gestiona; la clienta lee los suyos (consulta con where clienteId).
+    match /mesociclos/{mesocicloId} {
+      allow read: if esEntrenadora() || resource.data.clienteId == request.auth.uid;
+      allow write: if esEntrenadora();
+    }
+
     // --- HISTORIAL DE RUTINAS ---
     // Copia de cada rutina antes de sobrescribirla o borrarla, para que la
     // entrenadora pueda verla o recuperarla. Las clientas no lo ven.

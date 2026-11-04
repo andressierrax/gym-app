@@ -44,9 +44,9 @@ export interface FilaDeCarga {
  * SesionEntrenamiento: `i-j` por numeral detectado, o `i` si el set no
  * tiene numerales (una sola carga para todo el set).
  */
-export function filasDeCarga(bloques: Bloque[] = []): FilaDeCarga[] {
+export function filasDeCarga(bloques: Bloque[] = [], legado = false): FilaDeCarga[] {
     return bloques.flatMap((bloque, i) => {
-        const { puntos } = dividirBloque(bloque.contenido);
+        const { puntos } = dividirBloque(bloque.contenido, legado);
         if (puntos.length > 0) {
             return puntos.map((punto, j) => {
                 const etiqueta = etiquetaDePunto(punto);
@@ -56,7 +56,7 @@ export function filasDeCarga(bloques: Bloque[] = []): FilaDeCarga[] {
         return [{
             clave: String(i),
             etiqueta: bloque.titulo || `Set ${i + 1}`,
-            huella: huellaDeSet(bloque),
+            huella: huellaDeSet(bloque, legado),
         }];
     });
 }
@@ -65,8 +65,8 @@ export function filasDeCarga(bloques: Bloque[] = []): FilaDeCarga[] {
  * Huella de un set entero, para sus notas y su check. El título ("SET #1")
  * no sirve: todos los días lo repiten. Se usa lo que contiene.
  */
-function huellaDeSet(bloque: Bloque): string {
-    const { preambulo, puntos } = dividirBloque(bloque.contenido);
+function huellaDeSet(bloque: Bloque, legado = false): string {
+    const { preambulo, puntos } = dividirBloque(bloque.contenido, legado);
     if (puntos.length > 0) return puntos.map(p => huellaDeTexto(etiquetaDePunto(p))).join("|");
     const primeraLinea = preambulo.split("\n")[0] ?? "";
     return huellaDeTexto(primeraLinea) || huellaDeTexto(bloque.titulo);
@@ -79,18 +79,25 @@ export interface HuellasRutina {
     sets: Record<string, string>;
 }
 
-export function huellasDeRutina(bloques: Bloque[] = []): HuellasRutina {
+/**
+ * Con `legado`, las huellas que habría tenido la rutina con la regla vieja
+ * de numerales (que exigía espacio tras el punto). Es lo que se supone a las
+ * sesiones guardadas sin huellas: así, al corregir la regla, lo anotado en un
+ * "2." que se tragaba al "3.Abductores" sigue con el ejercicio 2 y los de
+ * después vuelven a su sitio en vez de correrse.
+ */
+export function huellasDeRutina(bloques: Bloque[] = [], legado = false): HuellasRutina {
     const filas: Record<string, string> = {};
-    for (const f of filasDeCarga(bloques)) filas[f.clave] = f.huella;
+    for (const f of filasDeCarga(bloques, legado)) filas[f.clave] = f.huella;
     const sets: Record<string, string> = {};
-    bloques.forEach((b, i) => { sets[String(i)] = huellaDeSet(b); });
+    bloques.forEach((b, i) => { sets[String(i)] = huellaDeSet(b, legado); });
     return { filas, sets };
 }
 
 /** Nombre visible de cada clave de carga: lo que el progreso muestra. */
-export function etiquetasDeCarga(bloques: Bloque[] = []): Record<string, string> {
+export function etiquetasDeCarga(bloques: Bloque[] = [], legado = false): Record<string, string> {
     const etiquetas: Record<string, string> = {};
-    for (const f of filasDeCarga(bloques)) etiquetas[f.clave] = f.etiqueta;
+    for (const f of filasDeCarga(bloques, legado)) etiquetas[f.clave] = f.etiqueta;
     return etiquetas;
 }
 
