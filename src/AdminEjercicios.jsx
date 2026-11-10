@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { db, storage } from "./firebase";
-import { collection, addDoc, getDocs, doc, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { TituloSeccion, Tarjeta, Campo, Entrada, BotonPrincipal } from "./ui";
 import { tipoDeArchivo, esVideo, separarBiblioteca, DIAS_TEMPORAL } from "./dominio/ejercicios";
@@ -61,6 +61,20 @@ export default function AdminEjercicios({ soloLectura = false }) {
         } catch (error) {
             console.error("Error al eliminar:", error);
             alert("No se pudo eliminar el ejercicio");
+        }
+    };
+
+    // Corre el vencimiento 4 semanas desde hoy. Sirve también para reactivar
+    // uno ya vencido: no se borran al vencer, así que basta con la fecha.
+    const renovar = async (ex) => {
+        const venceEl = sumarDias(hoy, DIAS_TEMPORAL);
+        if (!window.confirm(`«${ex.name}» se podrá asignar hasta el ${formatearFecha(venceEl)}. ¿Renovar?`)) return;
+        try {
+            await updateDoc(doc(db, "exercises", ex.id), { venceEl });
+            setEjercicios(prev => prev.map(e => e.id === ex.id ? { ...e, venceEl } : e));
+        } catch (error) {
+            console.error("No se pudo renovar:", error);
+            alert("No se pudo renovar: " + error.message);
         }
     };
 
@@ -141,6 +155,15 @@ export default function AdminEjercicios({ soloLectura = false }) {
                     }`}>
                     {ex.venceEl < hoy ? `Vencido el ${formatearFecha(ex.venceEl)}` : `⏳ Hasta ${formatearFecha(ex.venceEl)}`}
                 </p>
+            )}
+            {ex.temporal && !soloLectura && (
+                <button
+                    type="button"
+                    onClick={() => renovar(ex)}
+                    className="mt-2 w-full bg-amber-100 text-amber-900 border border-amber-300 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                >
+                    ↻ Renovar {DIAS_TEMPORAL / 7} semanas
+                </button>
             )}
         </div>
     );
