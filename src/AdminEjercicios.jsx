@@ -13,6 +13,7 @@ export default function AdminEjercicios({ soloLectura = false }) {
     const [cargando, setCargando] = useState(false);
     const [busqueda, setBusqueda] = useState("");
     const [temporal, setTemporal] = useState(false);
+    const [ampliado, setAmpliado] = useState(null);
     const [hoy] = useState(() => aISO(new Date()));
 
     // Separamos la lectura del cambio de estado para no llamar a setState de
@@ -138,11 +139,16 @@ export default function AdminEjercicios({ soloLectura = false }) {
                 </button>
             )}
 
-            <div className="relative overflow-hidden rounded-[1.5rem] mb-3 aspect-square shadow-inner bg-purple-50">
+            {/* Se ve entera (contain, no cover): las infografías anchas
+                perdían los lados al recortarlas. Tocándola se abre en grande. */}
+            <div
+                onClick={() => setAmpliado(ex)}
+                className="relative overflow-hidden rounded-[1.5rem] mb-3 aspect-square shadow-inner bg-white cursor-zoom-in"
+            >
                 {esVideo(ex) ? (
-                    <video src={ex.gifUrl} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                    <video src={ex.gifUrl} className="w-full h-full object-contain" autoPlay loop muted playsInline />
                 ) : (
-                    <img src={ex.gifUrl} alt={ex.name} className="w-full h-full object-cover" />
+                    <img src={ex.gifUrl} alt={ex.name} className="w-full h-full object-contain" />
                 )}
             </div>
             <p className="font-black text-[10px] text-amatista-dark uppercase tracking-tighter leading-tight px-1 pb-1">
@@ -170,6 +176,21 @@ export default function AdminEjercicios({ soloLectura = false }) {
 
     return (
         <div className="animate-in fade-in duration-500">
+            {ampliado && (
+                <div
+                    onClick={() => setAmpliado(null)}
+                    className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 cursor-zoom-out"
+                >
+                    {esVideo(ampliado) ? (
+                        <video src={ampliado.gifUrl} className="max-w-full max-h-[80vh] object-contain rounded-2xl" autoPlay loop muted playsInline />
+                    ) : (
+                        <img src={ampliado.gifUrl} alt={ampliado.name} className="max-w-full max-h-[80vh] object-contain rounded-2xl" />
+                    )}
+                    <p className="text-white font-black uppercase text-xs text-center mt-4 px-4">{ampliado.name}</p>
+                    <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mt-2">Toca para cerrar</p>
+                </div>
+            )}
+
             <TituloSeccion titulo="Biblioteca" subtitulo="Recursos Visuales Trinity" />
 
             {ejercicios.length > 0 && (
