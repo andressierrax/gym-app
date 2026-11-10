@@ -71,12 +71,13 @@ export function entrenosEn(m: Mesociclo, fechas: Date[]): number {
         .length;
 }
 
-const formatear = (iso: string): string =>
+/** "3 nov 2026". */
+export const formatearFecha = (iso: string): string =>
     desdeISO(iso).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" });
 
 /** "3 nov 2026 → 7 dic 2026", o "Desde 3 nov 2026" si aún no tiene fin. */
 export function etiquetaRango(m: Pick<Mesociclo, "inicio" | "fin">): string {
-    return m.fin ? `${formatear(m.inicio)} → ${formatear(m.fin)}` : `Desde ${formatear(m.inicio)}`;
+    return m.fin ? `${formatearFecha(m.inicio)} → ${formatearFecha(m.fin)}` : `Desde ${formatearFecha(m.inicio)}`;
 }
 
 /** Mensaje de error para mostrar, o null si se puede guardar. */

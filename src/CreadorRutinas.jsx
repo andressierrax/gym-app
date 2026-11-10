@@ -5,7 +5,8 @@ import { SEMANAS, DIAS, DIA_EXTRA, DIAS_ASIGNABLES, SEMANA_ADAPTACION, etiquetaS
 import { TituloSeccion, Tarjeta, Campo, Entrada, Seleccion, BotonPrincipal } from "./ui";
 import { idPlan, clonarBloques, planesDelHueco, planesFueraDeCiclo, agruparPorCliente, BLOQUE_VACIO } from "./dominio/planes";
 import { esEsporadica } from "./dominio/clientes";
-import { esVideo } from "./dominio/ejercicios";
+import { esVideo, separarBiblioteca } from "./dominio/ejercicios";
+import { aISO, formatearFecha } from "./dominio/mesociclos";
 import { idSesionCiclo, debeArchivarse, contarCompletados } from "./dominio/sesion";
 import { etiquetasDeCarga } from "./dominio/huellas";
 import { aDate } from "./dominio/fechas";
@@ -22,6 +23,7 @@ export default function CreadorRutinas() {
     const [bloques, setBloques] = useState([{ titulo: "SET #1", contenido: "" }]);
     const [cargando, setCargando] = useState(false);
     const [biblioteca, setBiblioteca] = useState([]);
+    const [hoy] = useState(() => aISO(new Date()));
     const [nombreRutina, setNombreRutina] = useState("");
     const [rutinasLibres, setRutinasLibres] = useState([]);
     const [rutinaLibreId, setRutinaLibreId] = useState(null);
@@ -750,7 +752,27 @@ No se puede deshacer. ¿Continuar?`)) return;
                                 <option value="">
                                     {biblioteca.length === 0 ? "Biblioteca vacía — sube GIFs primero" : "+ Añadir ejercicio de la biblioteca"}
                                 </option>
-                                {biblioteca.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                                {(() => {
+                                    // Los temporales van aparte y solo mientras no venzan;
+                                    // los vencidos ya no se ofrecen para asignar.
+                                    const { permanentes, vigentes } = separarBiblioteca(biblioteca, hoy);
+                                    return (
+                                        <>
+                                            {vigentes.length > 0 && (
+                                                <optgroup label="⏳ Temporales">
+                                                    {vigentes.map(e => (
+                                                        <option key={e.id} value={e.id}>
+                                                            ⏳ {e.name}{e.venceEl ? ` (hasta ${formatearFecha(e.venceEl)})` : ""}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                            <optgroup label="Biblioteca">
+                                                {permanentes.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                                            </optgroup>
+                                        </>
+                                    );
+                                })()}
                             </select>
 
                             <textarea

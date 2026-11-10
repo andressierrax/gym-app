@@ -3,7 +3,8 @@ import { db, storage } from "./firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { TituloSeccion, Tarjeta, Campo, Entrada, BotonPrincipal } from "./ui";
-import { tipoDeArchivo, esVideo } from "./dominio/ejercicios";
+import { tipoDeArchivo, esVideo, separarBiblioteca, DIAS_TEMPORAL } from "./dominio/ejercicios";
+import { aISO, sumarDias, formatearFecha } from "./dominio/mesociclos";
 
 export default function AdminEjercicios({ soloLectura = false }) {
     const [nombre, setNombre] = useState("");
@@ -11,6 +12,8 @@ export default function AdminEjercicios({ soloLectura = false }) {
     const [ejercicios, setEjercicios] = useState([]);
     const [cargando, setCargando] = useState(false);
     const [busqueda, setBusqueda] = useState("");
+    const [temporal, setTemporal] = useState(false);
+    const [hoy] = useState(() => aISO(new Date()));
 
     // Separamos la lectura del cambio de estado para no llamar a setState de
     // forma síncrona dentro del efecto.
@@ -87,11 +90,13 @@ export default function AdminEjercicios({ soloLectura = false }) {
                 name: nombre,
                 gifUrl: url,
                 tipo,
-                createdAt: new Date()
+                createdAt: new Date(),
+                ...(temporal ? { temporal: true, venceEl: sumarDias(hoy, DIAS_TEMPORAL) } : {}),
             });
 
             setNombre("");
             setArchivo(null);
+            setTemporal(false);
             obtenerEjercicios();
             alert("¡Ejercicio guardado en Trinity Fit! ✨");
         } catch (error) {
@@ -101,8 +106,43 @@ export default function AdminEjercicios({ soloLectura = false }) {
         setCargando(false);
     };
 
-    const ejerciciosFiltrados = ejercicios.filter(ex =>
-        (ex.name ?? "").toLowerCase().includes(busqueda.trim().toLowerCase())
+    const coincide = (ex) => (ex.name ?? "").toLowerCase().includes(busqueda.trim().toLowerCase());
+    const { permanentes, vigentes, vencidos } = separarBiblioteca(ejercicios, hoy);
+    const ejerciciosFiltrados = permanentes.filter(coincide);
+    // La clienta no ve los vencidos: ya no se le asignan. La entrenadora sí,
+    // para poder borrarlos cuando ya nadie los tenga en su rutina.
+    const temporalesFiltrados = [...vigentes, ...(soloLectura ? [] : vencidos)].filter(coincide);
+
+    const tarjeta = (ex) => (
+        <div key={ex.id} className="bg-white p-3 rounded-[2rem] shadow-sm border border-amatista-light/30 text-center relative">
+            {!soloLectura && (
+                <button
+                    onClick={() => eliminarEjercicio(ex.id, ex.gifUrl)}
+                    className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg active:scale-75 transition-all z-10"
+                >
+                    <span className="text-[10px]">✕</span>
+                </button>
+            )}
+
+            <div className="relative overflow-hidden rounded-[1.5rem] mb-3 aspect-square shadow-inner bg-purple-50">
+                {esVideo(ex) ? (
+                    <video src={ex.gifUrl} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                ) : (
+                    <img src={ex.gifUrl} alt={ex.name} className="w-full h-full object-cover" />
+                )}
+            </div>
+            <p className="font-black text-[10px] text-amatista-dark uppercase tracking-tighter leading-tight px-1 pb-1">
+                {ex.name}
+            </p>
+            {ex.temporal && ex.venceEl && (
+                <p className={`text-[9px] font-black uppercase tracking-tight mt-1 inline-block px-2 py-0.5 rounded-lg border ${ex.venceEl < hoy
+                    ? "bg-red-50 text-red-700 border-red-200"
+                    : "bg-amber-50 text-amber-800 border-amber-200"
+                    }`}>
+                    {ex.venceEl < hoy ? `Vencido el ${formatearFecha(ex.venceEl)}` : `⏳ Hasta ${formatearFecha(ex.venceEl)}`}
+                </p>
+            )}
+        </div>
     );
 
     return (
@@ -141,11 +181,42 @@ export default function AdminEjercicios({ soloLectura = false }) {
                             />
                         </Campo>
 
+                        <label className="flex items-start gap-3 bg-white/10 p-4 rounded-2xl cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={temporal}
+                                onChange={(e) => setTemporal(e.target.checked)}
+                                className="mt-0.5 w-5 h-5 shrink-0 accent-amatista-light"
+                            />
+                            <span>
+                                <span className="block text-white text-[11px] font-black uppercase tracking-widest">
+                                    Ejercicio temporal
+                                </span>
+                                <span className="block text-white/50 text-[11px] font-medium leading-snug mt-1">
+                                    Va en su propia sección y deja de ofrecerse para asignar a las {DIAS_TEMPORAL / 7} semanas.
+                                </span>
+                            </span>
+                        </label>
+
                         <BotonPrincipal disabled={cargando}>
                             {cargando ? "SUBIENDO..." : "Guardar en Biblioteca"}
                         </BotonPrincipal>
                     </Tarjeta>
                 </form>
+            )}
+
+            {temporalesFiltrados.length > 0 && (
+                <>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-3">
+                        ⏳ Temporales
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 mb-8 p-3 rounded-[2rem] bg-amber-50/60 border border-amber-200">
+                        {temporalesFiltrados.map(tarjeta)}
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amatista-dark/60 mb-3">
+                        Biblioteca
+                    </p>
+                </>
             )}
 
             <div className="grid grid-cols-2 gap-4 pb-10">
@@ -158,42 +229,7 @@ export default function AdminEjercicios({ soloLectura = false }) {
                         <p className="text-amatista-dark/40 font-bold italic text-xs uppercase tracking-widest">Ningún ejercicio coincide con "{busqueda}"</p>
                     </div>
                 ) : (
-                    ejerciciosFiltrados.map(ex => (
-                        <div key={ex.id} className="bg-white p-3 rounded-[2rem] shadow-sm border border-amatista-light/30 text-center relative">
-
-                            {/* BOTÓN ELIMINAR (Solo visible si no es soloLectura) */}
-                            {!soloLectura && (
-                                <button
-                                    onClick={() => eliminarEjercicio(ex.id, ex.gifUrl)}
-                                    className="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg active:scale-75 transition-all z-10"
-                                >
-                                    <span className="text-[10px]">✕</span>
-                                </button>
-                            )}
-
-                            <div className="relative overflow-hidden rounded-[1.5rem] mb-3 aspect-square shadow-inner bg-purple-50">
-                                {esVideo(ex) ? (
-                                    <video
-                                        src={ex.gifUrl}
-                                        className="w-full h-full object-cover"
-                                        autoPlay
-                                        loop
-                                        muted
-                                        playsInline
-                                    />
-                                ) : (
-                                    <img
-                                        src={ex.gifUrl}
-                                        alt={ex.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                )}
-                            </div>
-                            <p className="font-black text-[10px] text-amatista-dark uppercase tracking-tighter leading-tight px-1 pb-1">
-                                {ex.name}
-                            </p>
-                        </div>
-                    ))
+                    ejerciciosFiltrados.map(tarjeta)
                 )}
             </div>
         </div>
